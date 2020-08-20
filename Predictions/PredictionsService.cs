@@ -23,12 +23,13 @@ namespace BetterBullTracker.Services
         {
             //if there is sufficent historical data, use kalman
 
-            Stop currentStop = Spatial.StopResolver.GetCurrentStop(route, vehicle);
-            if (currentStop == null) return -1; //TODO: Partial path finding
+            //Stop currentStop = Spatial.StopResolver.GetCurrentStop(route, vehicle);
+            //if (currentStop == null) return -1; //TODO: Partial path finding
 
-            long kalmanResult = await Kalman(route, vehicleState, currentStop, route.GetStopByIndex(vehicleState.StopIndex + 1));
+            //long kalmanResult = await Kalman(route, vehicleState, currentStop, route.GetStopByIndex(vehicleState.StopIndex + 1));
 
-            return kalmanResult;
+            //return kalmanResult;
+            return 0;
         }
 
         private async Task<long> Kalman(Route route, VehicleState vehicle, Stop originStop, Stop destinationStop)

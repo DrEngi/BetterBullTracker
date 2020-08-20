@@ -31,8 +31,6 @@ namespace BetterBullTracker
             DatabaseService database = new DatabaseService();
             SyncromaticsService syncromatics = new SyncromaticsService(database);
 
-            syncromatics.DownloadCurrentRoutesAndStart();
-
             services.AddSingleton(syncromatics);
             services.AddSingleton(database);
         }

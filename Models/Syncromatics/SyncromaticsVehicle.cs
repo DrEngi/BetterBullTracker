@@ -15,6 +15,7 @@ namespace BetterBullTracker.Models.Syncromatics
 
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+        public string Heading { get; set; }
         
         public string Updated { get; set; }
 

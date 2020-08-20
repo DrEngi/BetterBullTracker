@@ -13,63 +13,43 @@ namespace BetterBullTracker.Spatial
     public static class StopResolver
     {
         //TODO: MSC/Lib/Math&Eng/Greek have stupidly wide distances where buses can stop, this might miss them.
-        //determine which stops are on correct side of road?
-        
+
         /// <summary>
-        /// Get the current stop the vehicle is at, any stop along the route works
+        /// Returns the stop this vehicle is at if it is within 5 meters. If none, return null
         /// </summary>
-        /// <param name="route">Route the vehicle is on</param>
-        /// <param name="vehicle">The vehicle</param>
-        /// <returns>The Models.Stop the vehicle is at, null if not at at all</returns>
-        public static Stop GetCurrentStop(Route route, SyncromaticsVehicle vehicle)
+        /// <param name="route">The Route this vehicle is on</param>
+        /// <param name="state">The latest VehicleState for this vehicle.</param>
+        /// <param name="newVehicle">If true, does not include predicted next stop because one doesn't exist yet</param>
+        /// <returns>the Stop this vehicle is at, or null if not at one.</returns>
+        public static Stop GetVehicleStop(Route route, VehicleState state, bool newVehicle = false)
         {
-            Coordinate vehicleLocation = new Coordinate(vehicle.Latitude, vehicle.Longitude);
-            foreach (Stop stop in route.RouteStops)
+            /*
+             * we are only interested in stops which are on the correct side of the road for this direction,
+             * but we will also consider the next stop in this route no matter what in case Syncromatics
+             * fucks up the heading.
+             */
+            Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
+            List<Stop> validStops = route.RouteStops.FindAll(x => 
             {
-                Coordinate stopLocation = new Coordinate(stop.Coordinate.Latitude, stop.Coordinate.Longitude);
-                
-                if (vehicleLocation.DistanceTo(stopLocation) <= 5)
+                if (newVehicle) return x.Direction.Equals(state.GetLatestVehicleReport().Heading); // vvv might not be needed
+                else return x.Direction.Equals(state.GetLatestVehicleReport().Heading);// || x.StopID == route.GetStopByIndex(state.StopIndex + 1).StopID;
+            });
+
+            foreach(Stop stop in validStops)
+            {
+                /*
+                 * checks if the vehicle is within 5 meters of the original stop. if it is, return that one.
+                 * if not, check the next stop along the route. this lets stop holdover times be accurate
+                 * but also ensures that we don't accidentally record the stop on the other side of the street
+                 * if they are relatively close together.
+                 */
+                if (vehicleLocation.DistanceTo(stop.Coordinate) <= 5)
                 {
-                    if (vehicle.ID == 482) Console.WriteLine($"vehicle ID 482 is {vehicleLocation.DistanceTo(stopLocation)}m from {stop.StopName}");
+                    //if (state.ID == 482) Console.WriteLine($"vehicle ID 482 is {vehicleLocation.DistanceTo(stop.Coordinate)}m from {stop.StopName}");
                     return stop;
                 }
             }
             return null;
-        }
-
-        /// <summary>
-        /// Returns the next expected stop when the vehicle passes it, otherwise null.
-        /// </summary>
-        /// <param name="route"></param>
-        /// <param name="vehicle"></param>
-        /// <param name="originalStop"></param>
-        /// <returns></returns>
-        public static Stop GetVehicleExpectedStop(Route route, SyncromaticsVehicle vehicle, VehicleState state)
-        {
-            Coordinate vehicleLocation = new Coordinate(vehicle.Latitude, vehicle.Longitude);
-            Stop originalStop = route.GetStopByIndex(state.StopIndex);
-            Stop newStop = route.GetStopByIndex(state.StopIndex + 1);
-
-            Coordinate originalStopLocation = new Coordinate(originalStop.Coordinate.Latitude, originalStop.Coordinate.Longitude);
-            Coordinate newStopLocation = new Coordinate(newStop.Coordinate.Latitude, newStop.Coordinate.Longitude);
-
-            /*
-             * checks if the vehicle is within 5 meters of the original stop. if it is, return that one.
-             * if not, check the next stop along the route. this lets stop holdover times be accurate
-             * but also ensures that we don't accidentally record the stop on the other side of the street
-             * if they are relatively close together.
-             */
-            if (vehicleLocation.DistanceTo(originalStopLocation) <= 5)
-            {
-                if (vehicle.ID == 482) Console.WriteLine($"vehicle ID 482 is {vehicleLocation.DistanceTo(newStopLocation)}m from {newStop.StopName}");
-                return newStop;
-            }
-            else if (vehicleLocation.DistanceTo(newStopLocation) <= 5)
-            {
-                if (vehicle.ID == 482) Console.WriteLine($"vehicle ID 482 is {vehicleLocation.DistanceTo(newStopLocation)}m from {newStop.StopName}");
-                return newStop;
-            } 
-            else return null;
         }
     }
 }

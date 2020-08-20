@@ -11,8 +11,12 @@ namespace BetterBullTracker.Models
         public int BusNumber { get; set; }
         public double Capacity { get; set; }
 
+        //Note: The StopIndex here is NOT comparable to the indexes in the Route Model.
+        //This one only tracks how many stops the vehicle has taken in the trip.
         public int StopIndex;
         public int TripIndex;
+
+        public int ID;
 
         private List<SyncromaticsVehicle> VehicleReports;
 
@@ -23,6 +27,7 @@ namespace BetterBullTracker.Models
 
             BusNumber = int.Parse(vehicleReport.Name);
             Capacity = vehicleReport.APCPercentage;
+            ID = vehicleReport.ID;
 
             StopIndex = 0;
             TripIndex = 0;
@@ -36,6 +41,21 @@ namespace BetterBullTracker.Models
         public SyncromaticsVehicle GetLatestVehicleReport()
         {
             return VehicleReports[VehicleReports.Count - 1];
+        }
+
+        public void IncrementStopIndex(Route route)
+        {
+            if (StopIndex == route.RouteStops.Count)
+            {
+                TripIndex++;
+                StopIndex = 0;
+            }
+            else StopIndex++;
+        }
+
+        public int GetStopIndex()
+        {
+            return StopIndex;
         }
     }
 }
