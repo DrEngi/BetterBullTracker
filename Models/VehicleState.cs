@@ -17,6 +17,7 @@ namespace BetterBullTracker.Models
         public int TripIndex;
 
         public int ID;
+        public int RouteID;
 
         private List<SyncromaticsVehicle> VehicleReports;
 
@@ -27,6 +28,7 @@ namespace BetterBullTracker.Models
 
             BusNumber = int.Parse(vehicleReport.Name);
             Capacity = vehicleReport.APCPercentage;
+            RouteID = vehicleReport.RouteID;
             ID = vehicleReport.ID;
 
             StopIndex = 0;

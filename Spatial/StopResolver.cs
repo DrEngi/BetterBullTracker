@@ -29,10 +29,9 @@ namespace BetterBullTracker.Spatial
              * fucks up the heading.
              */
             Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
-            List<Stop> validStops = route.RouteStops.FindAll(x => 
+            List<Stop> validStops = route.RouteStops.FindAll(x =>
             {
-                if (newVehicle) return x.Direction.Equals(state.GetLatestVehicleReport().Heading); // vvv might not be needed
-                else return x.Direction.Equals(state.GetLatestVehicleReport().Heading);// || x.StopID == route.GetStopByIndex(state.StopIndex + 1).StopID;
+                return x.Direction.Equals(state.GetLatestVehicleReport().Heading); // vvv might not be needed
             });
 
             foreach(Stop stop in validStops)
@@ -45,7 +44,6 @@ namespace BetterBullTracker.Spatial
                  */
                 if (vehicleLocation.DistanceTo(stop.Coordinate) <= 5)
                 {
-                    //if (state.ID == 482) Console.WriteLine($"vehicle ID 482 is {vehicleLocation.DistanceTo(stop.Coordinate)}m from {stop.StopName}");
                     return stop;
                 }
             }

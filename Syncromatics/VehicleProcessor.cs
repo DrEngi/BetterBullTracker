@@ -20,6 +20,7 @@ namespace BetterBullTracker.Syncromatics
         private Dictionary<int, VehicleState> VehicleStates;
         private Dictionary<int, TripHistory> InProgressHistories;
         private Dictionary<int, Route> Routes;
+        private List<int> MissingVehicles;
 
         private Timer Timer;
 
@@ -31,6 +32,7 @@ namespace BetterBullTracker.Syncromatics
             
             VehicleStates = new Dictionary<int, VehicleState>();
             InProgressHistories = new Dictionary<int, TripHistory>();
+            MissingVehicles = new List<int>();
         }
 
         public void Start()
@@ -57,57 +59,32 @@ namespace BetterBullTracker.Syncromatics
                 {
                     if (VehicleStates.ContainsKey(vehicle.ID)) await HandleExistingVehicle(vehicle);
                     else await HandleNewVehicle(vehicle);
+                }
 
-                    /*
-                    if (InProgressHistories.ContainsKey(vehicle.ID))
+                /*
+                 * At closing time, buses will straight up drop out of Syncromatic's view nearly immediately.
+                 * Because this runs all the time, we want to make sure we don't mix up routes when buses restart
+                 * the next day, and we also want to ensure that buses that take a break (and switch routes or turn off)
+                 * aren't being tracked.
+                 */
+                foreach (VehicleState state in VehicleStates.Values.ToList().FindAll(x => x.RouteID == route.RouteID))
+                {
+                    if (vehicles.FindIndex(x => x.ID == state.ID) != -1)
                     {
-                        //vehicle already visited a stop -- let us make sure it is not the same stop.
-                        //if it is, we should mark it as dwell time.
-                        TripHistory history = InProgressHistories[vehicle.ID];
-                        Stop stop = Spatial.StopResolver.GetVehicleExpectedStop(Routes[key], vehicle, state);
-                        if (stop != null)
-                        {
-                            if (stop.StopID != history.OriginStopID)
-                            {
-                                if (vehicle.ID == 482) Console.WriteLine("vehicle 1331 arrived at destination stop " + stop.StopName);
-
-                                history.DestinationStopID = stop.StopID;
-                                history.TimeArrivedDestination = DateTime.Parse(vehicle.AcceptableUpdated());
-                                history.TimeBucket = Database.GetTripHistoryCollection().GetCurrentTimeBucket();
-                                await Database.GetTripHistoryCollection().InsertTripHistory(history);
-                                InProgressHistories.Remove(vehicle.ID);
-
-                                TripHistory newHistory = new TripHistory();
-                                newHistory.RouteID = Routes[key].RouteID;
-                                newHistory.OriginStopID = stop.StopID;
-                                newHistory.TimeLeftOrigin = DateTime.UnixEpoch;
-                                InProgressHistories.Add(vehicle.ID, newHistory);
-                            }
-                        }
-                        else if (stop == null && history.TimeLeftOrigin == DateTime.UnixEpoch)
-                        {
-                            //vehicle is not at that stop anymore but time left origin wasn't recorded yet.
-                            history.TimeLeftOrigin = DateTime.Parse(vehicle.AcceptableUpdated());
-                            if (vehicle.ID == 482) Console.WriteLine("vehicle 1331 left stop, updating time");
-                        }
+                        if (MissingVehicles.Contains(state.ID)) MissingVehicles.Remove(state.ID);
                     }
                     else
                     {
-                        Stop stop = StopResolver.GetCurrentStop(Routes[key], vehicle);
-                        if (stop != null)
+                        if (MissingVehicles.Contains(state.ID))
                         {
-                            if (vehicle.ID == 482) Console.WriteLine("vehicle 1331 arrived at first stop " + stop.StopName);
+                            Console.WriteLine($"Vehicle {state.BusNumber} was not found twice, removing.");
 
-                            //freshly arrived at a stop
-                            TripHistory newHistory = new TripHistory();
-                            newHistory.RouteID = Routes[key].RouteID;
-                            newHistory.OriginStopID = stop.StopID;
-                            newHistory.TimeLeftOrigin = DateTime.UnixEpoch;
-                            InProgressHistories.Add(vehicle.ID, newHistory);
+                            MissingVehicles.Remove(state.ID);
+                            if (InProgressHistories.ContainsKey(state.ID)) InProgressHistories.Remove(state.ID);
+                            VehicleStates.Remove(state.ID);
                         }
-                        //ignore if no stops found, hasn't gotten anywhere yet
+                        else MissingVehicles.Add(state.ID);
                     }
-                    */
                 }
             }
         }
@@ -123,8 +100,6 @@ namespace BetterBullTracker.Syncromatics
             Route route = Routes[vehicle.RouteID];
             Stop stop = StopResolver.GetVehicleStop(route, state, true);
             if (stop == null) return; //we aren't interested in vehicles that haven't yet reached a stop.
-
-            if (vehicle.Name.Equals("4009")) Console.WriteLine($"Vehicle {vehicle.Name} has reached their first stop: {stop.StopName}");
 
             TripHistory history = new TripHistory();
             history.RouteID = vehicle.RouteID;
@@ -154,10 +129,13 @@ namespace BetterBullTracker.Syncromatics
                 //vehicle has reached a stop
                 if (InProgressHistories.ContainsKey(vehicle.ID) && InProgressHistories[vehicle.ID].OriginStopID != stop.StopID)
                 {
-                    //vehicle is at a different stop
-                    if (vehicle.Name.Equals("4009")) Console.WriteLine($"Vehicle {vehicle.Name} has reached their stop: {stop.StopName}");
-
                     TripHistory history = InProgressHistories[vehicle.ID];
+
+                    //vehicle is at a different stop
+                    //lets make sure it didn't skip a stop
+                    int originalStopIndex = route.GetIndexByStopID(history.OriginStopID);
+                    int thisStopIndex = route.GetIndexByStopID(stop.StopID);
+
                     history.DestinationStopID = stop.StopID;
                     history.TimeArrivedDestination = DateTime.Parse(vehicle.AcceptableUpdated());
                     history.TimeBucket = Database.GetTripHistoryCollection().GetCurrentTimeBucket();
@@ -181,9 +159,15 @@ namespace BetterBullTracker.Syncromatics
 
                     InProgressHistories.Remove(vehicle.ID);
                     InProgressHistories.Add(vehicle.ID, newHistory);
+;
+                    if (thisStopIndex - originalStopIndex != 1)
+                    {
+                        Console.WriteLine($"Vehicle {vehicle.Name} is has missed a stop!");
+                        for (int i = 0; i < thisStopIndex - originalStopIndex; i++) state.IncrementStopIndex(route);
+                    }
+                    else state.IncrementStopIndex(route); //TODO: handle last stop to next stop?
 
-                    state.IncrementStopIndex(route);
-                    if (history.TimeLeftOrigin != DateTime.UnixEpoch) await Database.GetTripHistoryCollection().InsertTripHistory(history);
+                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && thisStopIndex - originalStopIndex == 1) await Database.GetTripHistoryCollection().InsertTripHistory(history);
                     else Console.WriteLine("a trip history was thrown out!"); //see above
                 }
                 else
