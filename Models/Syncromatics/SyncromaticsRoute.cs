@@ -14,18 +14,9 @@ namespace BetterBullTracker.Models.Syncromatics
         public string Name { get; set; }
         public string ShortName { get; set; }
 
-        public List<SyncromaticsRouteDirection> Directions { get; set; }
+        public List<SyncromaticsStop> Stops { get; set; }
         public List<List<SyncromaticsRouteWaypoint>> Waypoints { get; set; } //a list of a list because syncromatics?
         public List<SyncromaticsVehicle> Vehicles { get; set; }
-
-    }
-
-    public class SyncromaticsRouteDirection
-    {
-        public int ID { get; set; }
-        public string Name { get; set; }
-
-        public List<SyncromaticsStop> Stops { get; set; }
 
         public SyncromaticsStop FindNextStop(SyncromaticsStop currentStop)
         {

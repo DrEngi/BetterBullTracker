@@ -26,7 +26,7 @@ namespace BetterBullTracker.Services
             Routes = new Dictionary<int, Route>();
 
             RouteProcessor = new RouteProcessor(this);
-            Routes = RouteProcessor.DownloadCurrentRoutesAndStart().Result;
+            Routes = RouteProcessor.DownloadCurrentRoutes().Result;
 
             VehicleProcessor = new VehicleProcessor(this, Routes);
             VehicleProcessor.Start();

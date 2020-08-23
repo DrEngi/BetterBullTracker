@@ -98,7 +98,7 @@ namespace BetterBullTracker.Syncromatics
         {
             VehicleState state = new VehicleState(vehicle);
             Route route = Routes[vehicle.RouteID];
-            Stop stop = StopResolver.GetVehicleStop(route, state, true);
+            Stop stop = StopResolver.GetVehicleStop(route, state);
             if (stop == null) return; //we aren't interested in vehicles that haven't yet reached a stop.
 
             TripHistory history = new TripHistory();
@@ -146,7 +146,7 @@ namespace BetterBullTracker.Syncromatics
                      * and use the time it arrived at this stop to figure out when it left the last stop?
                      * 
                      * this usually happens when two stops are in close proximity, and the 3s polling rate
-                     * isn't enough to detect when one is left before it arrives at the second one
+                     * isn't enough to detect when the bus left the first before it arrives at the second one
                      * 
                      * or we can throw away the trip history, since we'll probably have spares. gonna do
                      * that for now, because vehicles obviously can't teleport between stops
@@ -160,14 +160,21 @@ namespace BetterBullTracker.Syncromatics
                     InProgressHistories.Remove(vehicle.ID);
                     InProgressHistories.Add(vehicle.ID, newHistory);
 ;
-                    if (thisStopIndex - originalStopIndex != 1)
+                    /*
+                     * due to the 3s interval before we call vehicle updates, we can sometimes miss when a vehicle arrived/departed at a stop
+                     * if it is going fast enough. We still want to increase the stop index so we have an accurate representation of what
+                     * stops vehicles have passed or not.
+                     * 
+                     * the reason for the weird math after the && is because we don't want to trigger this when the bus gets back to its original stop
+                     */
+                    if (thisStopIndex - originalStopIndex != 1 && Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)
                     {
-                        Console.WriteLine($"Vehicle {vehicle.Name} is has missed a stop!");
+                        Console.WriteLine($"Vehicle {vehicle.Name} has missed a stop!");
                         for (int i = 0; i < thisStopIndex - originalStopIndex; i++) state.IncrementStopIndex(route);
                     }
-                    else state.IncrementStopIndex(route); //TODO: handle last stop to next stop?
+                    else state.IncrementStopIndex(route);
 
-                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && thisStopIndex - originalStopIndex == 1) await Database.GetTripHistoryCollection().InsertTripHistory(history);
+                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && (thisStopIndex - originalStopIndex == 1 && Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)) await Database.GetTripHistoryCollection().InsertTripHistory(history);
                     else Console.WriteLine("a trip history was thrown out!"); //see above
                 }
                 else
@@ -180,7 +187,6 @@ namespace BetterBullTracker.Syncromatics
                 //vehicle is not currently at a stop, but if it was before, let's record when it left.
                 if (InProgressHistories.ContainsKey(vehicle.ID) && InProgressHistories[vehicle.ID].TimeLeftOrigin == DateTime.UnixEpoch)
                 {
-                    if (vehicle.Name.Equals("4009")) Console.WriteLine($"Vehicle {vehicle.Name} has left their stop");
                     InProgressHistories[vehicle.ID].TimeLeftOrigin = DateTime.Parse(vehicle.AcceptableUpdated());
                 }
             }

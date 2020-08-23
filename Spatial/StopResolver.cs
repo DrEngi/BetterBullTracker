@@ -12,16 +12,13 @@ namespace BetterBullTracker.Spatial
     /// </summary>
     public static class StopResolver
     {
-        //TODO: MSC/Lib/Math&Eng/Greek have stupidly wide distances where buses can stop, this might miss them.
-
         /// <summary>
         /// Returns the stop this vehicle is at if it is within 5 meters. If none, return null
         /// </summary>
         /// <param name="route">The Route this vehicle is on</param>
         /// <param name="state">The latest VehicleState for this vehicle.</param>
-        /// <param name="newVehicle">If true, does not include predicted next stop because one doesn't exist yet</param>
         /// <returns>the Stop this vehicle is at, or null if not at one.</returns>
-        public static Stop GetVehicleStop(Route route, VehicleState state, bool newVehicle = false)
+        public static Stop GetVehicleStop(Route route, VehicleState state)
         {
             /*
              * we are only interested in stops which are on the correct side of the road for this direction,
@@ -31,21 +28,33 @@ namespace BetterBullTracker.Spatial
             Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
             List<Stop> validStops = route.RouteStops.FindAll(x =>
             {
-                return x.Direction.Equals(state.GetLatestVehicleReport().Heading); // vvv might not be needed
+                //MSC/Lib/Math&Eng/Greek have stupidly wide distances where buses can stop.
+                //we are going to ignore the heading requirements for these stops
+
+                bool isMSC = x.RTPI == 401;
+                bool isLIB = x.RTPI == 102;
+                bool isEng = x.RTPI == 101;
+                bool isGreek = x.RTPI == 432;
+
+                return x.Direction.Equals(state.GetLatestVehicleReport().Heading) || isMSC || isLIB || isEng || isGreek;
             });
 
             foreach(Stop stop in validStops)
             {
                 /*
-                 * checks if the vehicle is within 5 meters of the original stop. if it is, return that one.
-                 * if not, check the next stop along the route. this lets stop holdover times be accurate
-                 * but also ensures that we don't accidentally record the stop on the other side of the street
-                 * if they are relatively close together.
+                 * check the location of the vehicle from every valid stop. for non msc/lib/eng/greek stops,
+                 * 5 meters should be sufficent if the bus isn't speeding. otherwise, 5 should be fine
                  */
-                if (vehicleLocation.DistanceTo(stop.Coordinate) <= 5)
-                {
-                    return stop;
-                }
+
+                bool isMSC = stop.RTPI == 401;
+                bool isLIB = stop.RTPI == 102;
+                bool isEng = stop.RTPI == 101;
+                bool isGreek = stop.RTPI == 432;
+
+                int distance = 5;
+                if (isMSC || isLIB || isEng || isGreek) distance = 7;
+                    
+                if (vehicleLocation.DistanceTo(stop.Coordinate) <= distance) return stop;
             }
             return null;
         }
