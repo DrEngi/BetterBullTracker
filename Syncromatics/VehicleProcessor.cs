@@ -58,7 +58,7 @@ namespace BetterBullTracker.Syncromatics
                 foreach (SyncromaticsVehicle vehicle in vehicles)
                 {
                     if (VehicleStates.ContainsKey(vehicle.ID)) await HandleExistingVehicle(vehicle);
-                    else await HandleNewVehicle(vehicle);
+                    else HandleNewVehicle(vehicle);
                 }
 
                 /*
@@ -94,12 +94,18 @@ namespace BetterBullTracker.Syncromatics
         /// </summary>
         /// <param name="vehicle"></param>
         /// <returns></returns>
-        private async Task HandleNewVehicle(SyncromaticsVehicle vehicle)
+        private void HandleNewVehicle(SyncromaticsVehicle vehicle)
         {
             VehicleState state = new VehicleState(vehicle);
             Route route = Routes[vehicle.RouteID];
             Stop stop = StopResolver.GetVehicleStop(route, state);
-            if (stop == null) return; //we aren't interested in vehicles that haven't yet reached a stop.
+            
+            /*
+             * if this vehicle is new, we want to make sure there's no wonkiness
+             * by only starting to track it if it has reached the 1st stop on its route,
+             * either the msc or the library.
+             */
+            if (stop == null || stop.StopID != route.RouteStops[0].StopID) return;
 
             TripHistory history = new TripHistory();
             history.RouteID = vehicle.RouteID;
@@ -165,16 +171,16 @@ namespace BetterBullTracker.Syncromatics
                      * if it is going fast enough. We still want to increase the stop index so we have an accurate representation of what
                      * stops vehicles have passed or not.
                      * 
-                     * the reason for the weird math after the && is because we don't want to trigger this when the bus gets back to its original stop
+                     * the reason for the weird math after the || is because we don't want to trigger this when the bus gets back to its original stop
                      */
-                    if (thisStopIndex - originalStopIndex != 1 && Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)
+                    if (thisStopIndex - originalStopIndex != 1 || Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)
                     {
                         Console.WriteLine($"Vehicle {vehicle.Name} has missed a stop!");
                         for (int i = 0; i < thisStopIndex - originalStopIndex; i++) state.IncrementStopIndex(route);
                     }
                     else state.IncrementStopIndex(route);
 
-                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && (thisStopIndex - originalStopIndex == 1 && Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)) await Database.GetTripHistoryCollection().InsertTripHistory(history);
+                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && (thisStopIndex - originalStopIndex == 1 || Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)) await Database.GetTripHistoryCollection().InsertTripHistory(history);
                     else Console.WriteLine("a trip history was thrown out!"); //see above
                 }
                 else

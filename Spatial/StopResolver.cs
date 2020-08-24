@@ -28,31 +28,27 @@ namespace BetterBullTracker.Spatial
             Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
             List<Stop> validStops = route.RouteStops.FindAll(x =>
             {
-                //MSC/Lib/Math&Eng/Greek have stupidly wide distances where buses can stop.
+                //MSC/Greek have stupidly wide distances where buses can stop.
                 //we are going to ignore the heading requirements for these stops
 
                 bool isMSC = x.RTPI == 401;
-                bool isLIB = x.RTPI == 102;
-                bool isEng = x.RTPI == 101;
                 bool isGreek = x.RTPI == 432;
 
-                return x.Direction.Equals(state.GetLatestVehicleReport().Heading) || isMSC || isLIB || isEng || isGreek;
+                return x.Direction.Equals(state.GetLatestVehicleReport().Heading) || isMSC || isGreek;
             });
 
             foreach(Stop stop in validStops)
             {
                 /*
                  * check the location of the vehicle from every valid stop. for non msc/lib/eng/greek stops,
-                 * 5 meters should be sufficent if the bus isn't speeding. otherwise, 5 should be fine
+                 * 7 meters should be sufficent if the bus isn't speeding. otherwise, 5 should be fine
                  */
 
                 bool isMSC = stop.RTPI == 401;
-                bool isLIB = stop.RTPI == 102;
-                bool isEng = stop.RTPI == 101;
                 bool isGreek = stop.RTPI == 432;
 
                 int distance = 5;
-                if (isMSC || isLIB || isEng || isGreek) distance = 7;
+                if (isMSC || isGreek) distance = 7;
                     
                 if (vehicleLocation.DistanceTo(stop.Coordinate) <= distance) return stop;
             }
