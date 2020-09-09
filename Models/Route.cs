@@ -11,6 +11,7 @@ namespace BetterBullTracker.Models
     {
         public string RouteLetter { get; set; }
         public string RouteName { get; set; }
+        public string Color { get; set; }
         public int RouteID { get; set; }
 
         public List<RouteWaypoint> RouteWaypoints { get; set; }
@@ -21,6 +22,7 @@ namespace BetterBullTracker.Models
             RouteLetter = route.ShortName;
             RouteName = route.Name;
             RouteID = route.ID;
+            Color = route.Color;
 
             RouteWaypoints = new List<RouteWaypoint>();
             RouteStops = new List<Stop>();
@@ -58,7 +60,7 @@ namespace BetterBullTracker.Models
 
         public int StopID { get; set; }
         public string StopName { get; set; }
-        public String Direction { get; set; }
+        public string Direction { get; set; }
 
         public int RTPI { get; set; }
 
