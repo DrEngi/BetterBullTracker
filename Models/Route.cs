@@ -15,6 +15,7 @@ namespace BetterBullTracker.Models
         public int RouteID { get; set; }
 
         public List<RouteWaypoint> RouteWaypoints { get; set; }
+        public List<RouteWaypoint> MapboxMatchedWaypoints { get; set; }
         public List<Stop> RouteStops { get; set; }
         
         public Route(SyncromaticsRoute route)
@@ -25,6 +26,7 @@ namespace BetterBullTracker.Models
             Color = route.Color;
 
             RouteWaypoints = new List<RouteWaypoint>();
+            MapboxMatchedWaypoints = new List<RouteWaypoint>();
             RouteStops = new List<Stop>();
         }
 

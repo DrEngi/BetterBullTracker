@@ -29,7 +29,7 @@ namespace BetterBullTracker.Services
             Routes = RouteProcessor.DownloadCurrentRoutes().Result;
 
             VehicleProcessor = new VehicleProcessor(this, Routes);
-            VehicleProcessor.Start();
+            //VehicleProcessor.Start();
         }
 
         public DatabaseService GetDatabase()

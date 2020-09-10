@@ -1,4 +1,5 @@
 ﻿using BetterBullTracker.Models;
+using BetterBullTracker.Models.MapboxAPI;
 using BetterBullTracker.Models.Syncromatics;
 using BetterBullTracker.Services;
 using BetterBullTracker.Spatial;
@@ -36,7 +37,8 @@ namespace BetterBullTracker.Syncromatics
                     List<SyncromaticsStop> syncStops = await ($"{URL}/Route/{route.ID}/Direction/0/Stops").GetJsonAsync<List<SyncromaticsStop>>();
 
                     Route newRoute = new Route(route);
-                    newRoute.RouteWaypoints = ParseWaypoints(syncWaypoints);
+                    newRoute.RouteWaypoints = await ParseWaypoints(syncWaypoints);
+                    newRoute.MapboxMatchedWaypoints = await MapboxMatch(syncWaypoints);
                     newRoute.RouteStops = ParseStops(syncWaypoints, syncStops);
 
                     routes.Add(route.ID, newRoute);
@@ -45,13 +47,47 @@ namespace BetterBullTracker.Syncromatics
             return routes;
         }
 
-        private List<RouteWaypoint> ParseWaypoints(List<SyncromaticsRouteWaypoint> syncWaypoints)
+        private async Task<List<RouteWaypoint>> ParseWaypoints(List<SyncromaticsRouteWaypoint> syncWaypoints)
         {
             List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
             foreach (SyncromaticsRouteWaypoint waypoint in syncWaypoints)
             {
                 waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude));
+                
             }
+            return waypoints;
+        }
+
+        private async Task<List<RouteWaypoint>> MapboxMatch(List<SyncromaticsRouteWaypoint> syncWaypoints)
+        {
+            string url = "https://api.mapbox.com/matching/v5/mapbox/driving/";
+            string coordsForMapbox = "";
+            List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
+
+            for (int i = 0; i < syncWaypoints.Count; i++)
+            {
+                if (i % 100 == 0 && i != 0) coordsForMapbox = "";
+                coordsForMapbox += $"{syncWaypoints[i].Longitude},{syncWaypoints[i].Latitude};";
+
+                if ((i % 99 == 0 && i != 0) || i == syncWaypoints.Count - 1)
+                {
+                    coordsForMapbox = coordsForMapbox.Trim(';');
+                    string mapboxAPI = url + coordsForMapbox + "?annotations=maxspeed&overview=full&geometries=geojson&access_token=pk.eyJ1IjoiZHJlbmdpIiwiYSI6ImNrMzY1NXl4aDAxanMzaHV0Zzlkd2pnZngifQ.L6C_jKfq5UCC5PkLRmFCbQ";
+                    MatchingResponse response = await mapboxAPI.GetJsonAsync<MatchingResponse>();
+
+                    foreach(List<double> coord in response.matchings[0].geometry.coordinates)
+                    {
+                        waypoints.Add(new RouteWaypoint(coord[1], coord[0]));
+                    }
+                }
+            }
+
+            //to prevent a "gap" showing on the map, we're going to add the first waypoint again to the last, mapbox will hopefully match it
+            if (waypoints[waypoints.Count - 1].Coordinate.Latitude != waypoints[0].Coordinate.Latitude || waypoints[waypoints.Count - 1].Coordinate.Longitude != waypoints[0].Coordinate.Longitude)
+            {
+                waypoints.Add(waypoints[0]);
+            }
+
             return waypoints;
         }
 
