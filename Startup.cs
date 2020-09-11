@@ -26,7 +26,7 @@ namespace BetterBullTracker
         // This method gets called by the runtime. Use this method to add services to the container.
         public async void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
+            services.AddControllers().AddNewtonsoftJson();
 
             DatabaseService database = new DatabaseService();
             SyncromaticsService syncromatics = new SyncromaticsService(database);
