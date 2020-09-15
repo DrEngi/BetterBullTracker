@@ -1,13 +1,13 @@
 ﻿using BetterBullTracker.Models.Syncromatics;
-using BetterBullTracker.Models.HistoricalRecords;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BetterBullTracker.Models;
+using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.Databases.Models;
 
-namespace BetterBullTracker.Services.Databases
+namespace BetterBullTracker.Databases
 {
     /// <summary>
     /// two hour increments
@@ -35,7 +35,7 @@ namespace BetterBullTracker.Services.Databases
 
         public async Task InsertTripHistory(TripHistory history)
         {
-            await this.Collection.InsertOneAsync(history);
+            await Collection.InsertOneAsync(history);
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace BetterBullTracker.Services.Databases
         /// <param name="limit">The max number of histories to return</param>
         /// <param name="bucket">The TimeBucket to search for on previous days. Defaults to the current one in use.</param>
         /// <returns>A List of TripHistory objects</returns>
-        public async Task<List<TripHistory>> GetTripHistories(Route route, Stop origin, Stop destination, int daysPrior, int limit, double bucket=-1)
+        public async Task<List<TripHistory>> GetTripHistories(Route route, Stop origin, Stop destination, int daysPrior, int limit, double bucket = -1)
         {
             if (bucket == -1) bucket = GetCurrentTimeBucket();
 
@@ -59,7 +59,7 @@ namespace BetterBullTracker.Services.Databases
 
             var sort = Builders<TripHistory>.Sort.Descending(x => x.TimeArrivedDestination);
             var combinedFilter = Builders<TripHistory>.Filter.And(routeFilter, originFilter, destinationFilter, timeFilter);
-            return await Collection.Find<TripHistory>(combinedFilter).Sort(sort).Limit(limit).ToListAsync();
+            return await Collection.Find(combinedFilter).Sort(sort).Limit(limit).ToListAsync();
         }
 
         /// <summary>

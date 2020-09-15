@@ -1,24 +1,25 @@
 ﻿using BetterBullTracker.Models.Syncromatics;
-using BetterBullTracker.Models.HistoricalRecords;
 using BetterBullTracker.Predictions.Kalman;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using BetterBullTracker.Models;
+using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.Databases.Models;
+using BetterBullTracker.Databases;
 
-namespace BetterBullTracker.Services
+namespace BetterBullTracker.Predictions
 {
     public class PredictionsService
     {
         DatabaseService Database;
-        
+
         public PredictionsService(DatabaseService database)
         {
             Database = database;
         }
-        
+
         public async Task<long> MakePrediction(Route route, SyncromaticsVehicle vehicle, VehicleState vehicleState)
         {
             //if there is sufficent historical data, use kalman
@@ -46,11 +47,11 @@ namespace BetterBullTracker.Services
                 {
                     //we have enough info, ready to try predictions
                     KalmanPrediction kalman = new KalmanPrediction();
-                    Predictions.Kalman.KalmanVehicle kalmanVehicle = new KalmanVehicle(vehicle.BusNumber.ToString());
+                    KalmanVehicle kalmanVehicle = new KalmanVehicle(vehicle.BusNumber.ToString());
 
                     KalmanVehicleStopDetail kalmanOriginStop = new KalmanVehicleStopDetail(originStop, 0, kalmanVehicle);
                     List<KalmanTripSegment> kalmanSegments = new List<KalmanTripSegment>();
-                    foreach(TripHistory history in previousHistories)
+                    foreach (TripHistory history in previousHistories)
                     {
                         KalmanVehicleStopDetail kalmanEndStop = new KalmanVehicleStopDetail(destinationStop, history.GetTravelTime(), kalmanVehicle);
                         kalmanSegments.Add(new KalmanTripSegment(kalmanOriginStop, kalmanEndStop));

@@ -1,5 +1,4 @@
-﻿using BetterBullTracker.Services.Databases;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -7,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BetterBullTracker.Services
+namespace BetterBullTracker.Databases
 {
     public class DatabaseService
     {
@@ -16,11 +15,11 @@ namespace BetterBullTracker.Services
 
         private TripHistoryCollection TripHistory;
         private KalmanErrorCollection KalmanError;
-        
+
         public DatabaseService()
         {
             DatabaseConfig config = JsonConvert.DeserializeObject<DatabaseConfig>(File.ReadAllText("config.json"));
-            
+
             Client = new MongoClient($"mongodb://{config.username}:{config.password}@{config.address}:{config.port}");
             Database = Client.GetDatabase("bus-dev");
 

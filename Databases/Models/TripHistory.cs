@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BetterBullTracker.Models.Syncromatics;
 
-namespace BetterBullTracker.Models.HistoricalRecords
+namespace BetterBullTracker.Databases.Models
 {
     public class TripHistory
     {

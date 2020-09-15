@@ -1,11 +1,11 @@
-﻿using BetterBullTracker.Models.Syncromatics;
+﻿using BetterBullTracker.AVLProcessing.Models.Syncromatics;
 using BetterBullTracker.Spatial;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BetterBullTracker.Models
+namespace BetterBullTracker.AVLProcessing.Models
 {
     public class Route
     {
@@ -17,7 +17,7 @@ namespace BetterBullTracker.Models
         public List<RouteWaypoint> RouteWaypoints { get; set; }
         public List<RouteWaypoint> MapboxMatchedWaypoints { get; set; }
         public List<Stop> RouteStops { get; set; }
-        
+
         public Route(SyncromaticsRoute route)
         {
             RouteLetter = route.ShortName;
@@ -61,12 +61,11 @@ namespace BetterBullTracker.Models
         public Coordinate Coordinate { get; set; }
 
         public int StopID { get; set; }
+        public int RTPI { get; set; }
         public string StopName { get; set; }
         public string Direction { get; set; }
 
-        public int RTPI { get; set; }
-
-        public Stop(Coordinate coordinate, SyncromaticsStop stop, String direction)
+        public Stop(Coordinate coordinate, SyncromaticsStop stop, string direction)
         {
             Coordinate = coordinate;
             StopID = stop.ID;

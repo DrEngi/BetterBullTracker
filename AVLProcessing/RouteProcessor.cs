@@ -1,7 +1,6 @@
-﻿using BetterBullTracker.Models;
-using BetterBullTracker.Models.MapboxAPI;
-using BetterBullTracker.Models.Syncromatics;
-using BetterBullTracker.Services;
+﻿using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.AVLProcessing.Models.Syncromatics;
+using BetterBullTracker.Mapbox;
 using BetterBullTracker.Spatial;
 using Flurl.Http;
 using System;
@@ -10,12 +9,12 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
-namespace BetterBullTracker.Syncromatics
+namespace BetterBullTracker.AVLProcessing
 {
     public class RouteProcessor
     {
         private SyncromaticsService Syncromatics;
-        
+
         public RouteProcessor(SyncromaticsService syncromatics)
         {
             Syncromatics = syncromatics;
@@ -24,17 +23,17 @@ namespace BetterBullTracker.Syncromatics
         public async Task<Dictionary<int, Route>> DownloadCurrentRoutes()
         {
             string URL = Syncromatics.GetURL();
-            
+
             List<SyncromaticsRegion> regions = await (URL + "/Regions").GetJsonAsync<List<SyncromaticsRegion>>();
             Dictionary<int, Route> routes = new Dictionary<int, Route>();
 
             foreach (SyncromaticsRegion region in regions)
             {
-                List<SyncromaticsRoute> syncRoutes = await ($"{URL}/Region/{region.ID}/Routes").GetJsonAsync<List<SyncromaticsRoute>>();
+                List<SyncromaticsRoute> syncRoutes = await $"{URL}/Region/{region.ID}/Routes".GetJsonAsync<List<SyncromaticsRoute>>();
                 foreach (SyncromaticsRoute route in syncRoutes)
                 {
-                    List<SyncromaticsRouteWaypoint> syncWaypoints = (await ($"{URL}/Route/{route.ID}/Waypoints").GetJsonAsync<List<List<SyncromaticsRouteWaypoint>>>())[0];
-                    List<SyncromaticsStop> syncStops = await ($"{URL}/Route/{route.ID}/Direction/0/Stops").GetJsonAsync<List<SyncromaticsStop>>();
+                    List<SyncromaticsRouteWaypoint> syncWaypoints = (await $"{URL}/Route/{route.ID}/Waypoints".GetJsonAsync<List<List<SyncromaticsRouteWaypoint>>>())[0];
+                    List<SyncromaticsStop> syncStops = await $"{URL}/Route/{route.ID}/Direction/0/Stops".GetJsonAsync<List<SyncromaticsStop>>();
 
                     Route newRoute = new Route(route);
                     newRoute.RouteWaypoints = await ParseWaypoints(syncWaypoints);
@@ -53,7 +52,7 @@ namespace BetterBullTracker.Syncromatics
             foreach (SyncromaticsRouteWaypoint waypoint in syncWaypoints)
             {
                 waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude));
-                
+
             }
             return waypoints;
         }
@@ -69,13 +68,13 @@ namespace BetterBullTracker.Syncromatics
                 if (i % 100 == 0 && i != 0) coordsForMapbox = "";
                 coordsForMapbox += $"{syncWaypoints[i].Longitude},{syncWaypoints[i].Latitude};";
 
-                if ((i % 99 == 0 && i != 0) || i == syncWaypoints.Count - 1)
+                if (i % 99 == 0 && i != 0 || i == syncWaypoints.Count - 1)
                 {
                     coordsForMapbox = coordsForMapbox.Trim(';');
                     string mapboxAPI = url + coordsForMapbox + "?annotations=maxspeed&overview=full&geometries=geojson&access_token=pk.eyJ1IjoiZHJlbmdpIiwiYSI6ImNrMzY1NXl4aDAxanMzaHV0Zzlkd2pnZngifQ.L6C_jKfq5UCC5PkLRmFCbQ";
                     MatchingResponse response = await mapboxAPI.GetJsonAsync<MatchingResponse>();
 
-                    foreach(List<double> coord in response.matchings[0].geometry.coordinates)
+                    foreach (List<double> coord in response.matchings[0].geometry.coordinates)
                     {
                         waypoints.Add(new RouteWaypoint(coord[1], coord[0]));
                     }

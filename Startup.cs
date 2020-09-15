@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BetterBullTracker.Services;
+using BetterBullTracker.AVLProcessing;
+using BetterBullTracker.Databases;
+using BetterBullTracker.WebSockets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -28,8 +30,9 @@ namespace BetterBullTracker
         {
             services.AddControllers().AddNewtonsoftJson();
 
+            WebsocketService websocket = new WebsocketService();
             DatabaseService database = new DatabaseService();
-            SyncromaticsService syncromatics = new SyncromaticsService(database);
+            SyncromaticsService syncromatics = new SyncromaticsService(database, websocket);
 
             services.AddSingleton(syncromatics);
             services.AddSingleton(database);

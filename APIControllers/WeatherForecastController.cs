@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BetterBullTracker.Models;
-using BetterBullTracker.Services;
+using BetterBullTracker.AVLProcessing;
+using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Spatial;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -47,6 +47,12 @@ namespace BetterBullTracker.Controllers
                 stops.Add(route.RouteID, closest);
             }
             return stops;
+        }
+
+        [HttpGet("navigation")]
+        public ActionResult GetRouteToStop(int stopID)
+        {
+            return Ok();
         }
     }
 }

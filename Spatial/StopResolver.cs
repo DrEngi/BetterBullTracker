@@ -1,4 +1,4 @@
-﻿using BetterBullTracker.Models;
+﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Models.Syncromatics;
 using System;
 using System.Collections.Generic;

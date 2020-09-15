@@ -1,7 +1,7 @@
-﻿using BetterBullTracker.Models;
-using BetterBullTracker.Models.HistoricalRecords;
+﻿using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.Databases;
+using BetterBullTracker.Databases.Models;
 using BetterBullTracker.Models.Syncromatics;
-using BetterBullTracker.Services;
 using BetterBullTracker.Spatial;
 using Flurl.Http;
 using System;
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
 
-namespace BetterBullTracker.Syncromatics
+namespace BetterBullTracker.AVLProcessing
 {
     public class VehicleProcessor
     {
@@ -29,7 +29,7 @@ namespace BetterBullTracker.Syncromatics
             Syncromatics = service;
             Database = service.GetDatabase();
             Routes = routes;
-            
+
             VehicleStates = new Dictionary<int, VehicleState>();
             InProgressHistories = new Dictionary<int, TripHistory>();
             MissingVehicles = new List<int>();
@@ -48,11 +48,11 @@ namespace BetterBullTracker.Syncromatics
         /// </summary>
         /// <param name="source"></param>
         /// <param name="e"></param>
-        private async void DownloadLatestVehicles(Object source, ElapsedEventArgs e)
+        private async void DownloadLatestVehicles(object source, ElapsedEventArgs e)
         {
             string URL = Syncromatics.GetURL();
 
-            foreach(Route route in Routes.Values)
+            foreach (Route route in Routes.Values)
             {
                 List<SyncromaticsVehicle> vehicles = await $"{URL}/Route/{route.RouteID}/Vehicles".GetJsonAsync<List<SyncromaticsVehicle>>();
                 foreach (SyncromaticsVehicle vehicle in vehicles)
@@ -99,7 +99,7 @@ namespace BetterBullTracker.Syncromatics
             VehicleState state = new VehicleState(vehicle);
             Route route = Routes[vehicle.RouteID];
             Stop stop = StopResolver.GetVehicleStop(route, state);
-            
+
             /*
              * if this vehicle is new, we want to make sure there's no wonkiness
              * by only starting to track it if it has reached the 1st stop on its route,
@@ -129,7 +129,7 @@ namespace BetterBullTracker.Syncromatics
 
             Route route = Routes[vehicle.RouteID];
             Stop stop = StopResolver.GetVehicleStop(route, state);
-            
+
             if (stop != null)
             {
                 //vehicle has reached a stop
@@ -165,13 +165,14 @@ namespace BetterBullTracker.Syncromatics
 
                     InProgressHistories.Remove(vehicle.ID);
                     InProgressHistories.Add(vehicle.ID, newHistory);
-;
+                    ;
                     /*
                      * due to the 3s interval before we call vehicle updates, we can sometimes miss when a vehicle arrived/departed at a stop
                      * if it is going fast enough. We still want to increase the stop index so we have an accurate representation of what
                      * stops vehicles have passed or not.
                      * 
                      * the reason for the weird math after the || is because we don't want to trigger this when the bus gets back to its original stop
+                     * TODO: BROKEN
                      */
                     if (thisStopIndex - originalStopIndex != 1 || Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)
                     {
@@ -185,7 +186,7 @@ namespace BetterBullTracker.Syncromatics
                 }
                 else
                 {
-                    //vehicle is at the same stop. for now, don't do anything, but we could probably record dwell time eventually
+                    //vehicle is at the same stop, start a new dwelltime
                 }
             }
             else
@@ -196,8 +197,7 @@ namespace BetterBullTracker.Syncromatics
                     InProgressHistories[vehicle.ID].TimeLeftOrigin = DateTime.Parse(vehicle.AcceptableUpdated());
                 }
             }
+            await Syncromatics.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state));
         }
-
-
     }
 }

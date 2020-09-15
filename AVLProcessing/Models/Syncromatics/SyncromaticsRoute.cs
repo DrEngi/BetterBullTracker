@@ -1,9 +1,10 @@
-﻿using System;
+﻿using BetterBullTracker.Models.Syncromatics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BetterBullTracker.Models.Syncromatics
+namespace BetterBullTracker.AVLProcessing.Models.Syncromatics
 {
     public class SyncromaticsRoute
     {
