@@ -52,7 +52,6 @@ namespace BetterBullTracker.AVLProcessing
             foreach (SyncromaticsRouteWaypoint waypoint in syncWaypoints)
             {
                 waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude));
-
             }
             return waypoints;
         }
@@ -60,24 +59,23 @@ namespace BetterBullTracker.AVLProcessing
         private async Task<List<RouteWaypoint>> MapboxMatch(List<SyncromaticsRouteWaypoint> syncWaypoints)
         {
             string url = "https://api.mapbox.com/matching/v5/mapbox/driving/";
-            string coordsForMapbox = "";
             List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
 
-            for (int i = 0; i < syncWaypoints.Count; i++)
+            foreach(List<SyncromaticsRouteWaypoint> sepList in SplitList<SyncromaticsRouteWaypoint>(syncWaypoints, 99))
             {
-                if (i % 100 == 0 && i != 0) coordsForMapbox = "";
-                coordsForMapbox += $"{syncWaypoints[i].Longitude},{syncWaypoints[i].Latitude};";
-
-                if (i % 99 == 0 && i != 0 || i == syncWaypoints.Count - 1)
+                string coordsForMapbox = "";
+                foreach(SyncromaticsRouteWaypoint waypoint in sepList)
                 {
-                    coordsForMapbox = coordsForMapbox.Trim(';');
-                    string mapboxAPI = url + coordsForMapbox + "?annotations=maxspeed&overview=full&geometries=geojson&access_token=pk.eyJ1IjoiZHJlbmdpIiwiYSI6ImNrMzY1NXl4aDAxanMzaHV0Zzlkd2pnZngifQ.L6C_jKfq5UCC5PkLRmFCbQ";
-                    MatchingResponse response = await mapboxAPI.GetJsonAsync<MatchingResponse>();
+                    coordsForMapbox += $"{waypoint.Longitude},{waypoint.Latitude};";
+                }
 
-                    foreach (List<double> coord in response.matchings[0].geometry.coordinates)
-                    {
-                        waypoints.Add(new RouteWaypoint(coord[1], coord[0]));
-                    }
+                coordsForMapbox = coordsForMapbox.Trim(';');
+                string mapboxAPI = url + coordsForMapbox + "?annotations=maxspeed&overview=full&geometries=geojson&access_token=pk.eyJ1IjoiZHJlbmdpIiwiYSI6ImNrMzY1NXl4aDAxanMzaHV0Zzlkd2pnZngifQ.L6C_jKfq5UCC5PkLRmFCbQ";
+                MatchingResponse response = await mapboxAPI.GetJsonAsync<MatchingResponse>();
+
+                foreach (List<double> coord in response.matchings[0].geometry.coordinates)
+                {
+                    waypoints.Add(new RouteWaypoint(coord[1], coord[0]));
                 }
             }
 
@@ -146,6 +144,14 @@ namespace BetterBullTracker.AVLProcessing
             }
 
             return tempStopsList;
+        }
+
+        public static IEnumerable<List<T>> SplitList<T>(List<T> locations, int nSize = 30)
+        {
+            for (int i = 0; i < locations.Count; i += nSize)
+            {
+                yield return locations.GetRange(i, Math.Min(nSize, locations.Count - i));
+            }
         }
     }
 }
