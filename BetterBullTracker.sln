@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30128.74
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BetterBullTracker", "BetterBullTracker.csproj", "{04D0724A-6D36-44AB-A32C-2907344046A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BetterBullTracker", "BetterBullTracker\BetterBullTracker.csproj", "{04D0724A-6D36-44AB-A32C-2907344046A4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncromaticsAPI", "..\SyncromaticsAPI\SyncromaticsAPI.csproj", "{249E5C52-0D25-4942-A43B-DB4DEE9C7F9F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncromaticsAPI", "SyncromaticsAPI\SyncromaticsAPI.csproj", "{249E5C52-0D25-4942-A43B-DB4DEE9C7F9F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
