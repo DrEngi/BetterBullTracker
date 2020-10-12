@@ -20,7 +20,7 @@ namespace BetterBullTracker.AVLProcessing
             {
                 Route newRoute = new Route(route);
                 newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
-                newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
+                //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
                 newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
                 newRoute.StopPaths = ParseStopPaths(route.Waypoints, route.Stops);
                 newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);
@@ -32,12 +32,19 @@ namespace BetterBullTracker.AVLProcessing
 
         private double CalculateTotalDistance(List<SyncromaticsWaypoint> waypoints)
         {
+            //TODO: ALL COORDINATES IN PAIRS ARE MEASURED ONLY BY THEIR PAIRS
+            //THEY ARE NOT CONNECTED!!!
             double totalRouteDistance = 0.0;
-            for (int i = 0; i < waypoints.Count; i += 2)
+            for (int i = 0; i < waypoints.Count; i++)
             {
-                SyncromaticsWaypoint firstPoint = waypoints[i];
-                SyncromaticsWaypoint secondPoint = waypoints[i + 1];
-                totalRouteDistance += new Coordinate(firstPoint.Latitude, firstPoint.Longitude).DistanceTo(new Coordinate(secondPoint.Latitude, secondPoint.Longitude));
+                Coordinate secondPoint;
+                if (i == waypoints.Count - 1 ) secondPoint = new Coordinate(waypoints[0].Latitude, waypoints[0].Longitude);
+                else secondPoint = new Coordinate(waypoints[i + 1].Latitude, waypoints[i + 1].Longitude);
+
+                Coordinate firstPoint = new Coordinate(waypoints[i].Latitude, waypoints[i].Longitude);
+                
+                totalRouteDistance += firstPoint.DistanceTo(secondPoint);
+                Console.WriteLine("distance now " + totalRouteDistance);
             }
             return totalRouteDistance;
         }
@@ -62,10 +69,10 @@ namespace BetterBullTracker.AVLProcessing
                     }
 
                     double totalDistance = 0.0;
-                    for (int j = 0; j+1 < coordinates.Count; j += 2)
+                    for (int j = 0; j < coordinates.Count; j++)
                     {
-                        //weird exception here idk when Count = 8
-                        totalDistance += coordinates[j].DistanceTo(coordinates[j + 1]);
+                        if (j == coordinates.Count - 1) totalDistance += coordinates[j].DistanceTo(coordinates[0]);
+                        else totalDistance += coordinates[j].DistanceTo(coordinates[j + 1]);
                     }
 
                     StopPath path = new StopPath()
