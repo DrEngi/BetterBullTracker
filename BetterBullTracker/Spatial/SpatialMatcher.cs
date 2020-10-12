@@ -1,5 +1,5 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
-using BetterBullTracker.Models.Syncromatics;
+using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 namespace BetterBullTracker.Spatial
 {
     /// <summary>
-    /// Determines what stop a vehicle is at, or null if not
+    /// Determines where a vehicle is located
     /// </summary>
-    public static class StopResolver
+    public static class SpatialMatcher
     {
         /// <summary>
         /// Returns the stop this vehicle is at if it is within 5 meters. If none, return null
@@ -53,6 +53,16 @@ namespace BetterBullTracker.Spatial
                 if (vehicleLocation.DistanceTo(stop.Coordinate) <= distance) return stop;
             }
             return null;
+        }
+
+        public static StopPath GetStopPath(Route route, VehicleState state)
+        {
+            SyncromaticsVehicle report = state.GetLatestVehicleReport();
+            return route.StopPaths.Find(x =>
+            {
+                int find = x.Path.FindIndex(y => y.Latitude != report.Latitude || y.Longitude != report.Longitude);
+                return find != -1;
+            });
         }
     }
 }

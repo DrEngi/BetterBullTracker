@@ -32,7 +32,7 @@ namespace BetterBullTracker
 
             WebsocketService websocket = new WebsocketService();
             DatabaseService database = new DatabaseService();
-            SyncromaticsService syncromatics = new SyncromaticsService(database, websocket);
+            AVLProcessingService syncromatics = new AVLProcessingService(database, websocket);
 
             services.AddSingleton(syncromatics);
             services.AddSingleton(database);

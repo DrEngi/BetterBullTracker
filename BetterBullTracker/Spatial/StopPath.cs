@@ -11,6 +11,7 @@ namespace BetterBullTracker.Spatial
         public int DestinationStopID;
 
         public List<Coordinate> Path;
+        public double TotalPathDistance;
 
     }
 }

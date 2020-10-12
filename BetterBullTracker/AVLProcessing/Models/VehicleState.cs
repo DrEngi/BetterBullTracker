@@ -1,4 +1,4 @@
-﻿using BetterBullTracker.Models.Syncromatics;
+﻿using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +18,8 @@ namespace BetterBullTracker.AVLProcessing.Models
 
         public int ID;
         public int RouteID;
+
+        public bool OnRoute;
 
         private List<SyncromaticsVehicle> VehicleReports;
 

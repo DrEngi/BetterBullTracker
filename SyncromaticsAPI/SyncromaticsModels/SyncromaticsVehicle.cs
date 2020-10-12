@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Text;
 
-namespace BetterBullTracker.Models.Syncromatics
+namespace SyncromaticsAPI.SyncromaticsModels
 {
     public class SyncromaticsVehicle
     {
@@ -16,7 +15,7 @@ namespace BetterBullTracker.Models.Syncromatics
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public string Heading { get; set; }
-        
+
         public string Updated { get; set; }
 
         /// <summary>

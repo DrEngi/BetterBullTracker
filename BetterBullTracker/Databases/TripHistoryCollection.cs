@@ -1,5 +1,4 @@
-﻿using BetterBullTracker.Models.Syncromatics;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -56,9 +55,10 @@ namespace BetterBullTracker.Databases
             var originFilter = Builders<TripHistory>.Filter.Eq(x => x.OriginStopID, origin.StopID);
             var destinationFilter = Builders<TripHistory>.Filter.Eq(x => x.DestinationStopID, destination.StopID);
             var timeFilter = Builders<TripHistory>.Filter.Gte(x => x.TimeArrivedDestination, DateTime.Now.AddDays(-daysPrior));
+            var bucketFilter = Builders<TripHistory>.Filter.Eq(x => x.TimeBucket, bucket);
 
             var sort = Builders<TripHistory>.Sort.Descending(x => x.TimeArrivedDestination);
-            var combinedFilter = Builders<TripHistory>.Filter.And(routeFilter, originFilter, destinationFilter, timeFilter);
+            var combinedFilter = Builders<TripHistory>.Filter.And(routeFilter, originFilter, destinationFilter, timeFilter, bucketFilter);
             return await Collection.Find(combinedFilter).Sort(sort).Limit(limit).ToListAsync();
         }
 

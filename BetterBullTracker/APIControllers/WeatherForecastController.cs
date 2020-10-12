@@ -14,9 +14,9 @@ namespace BetterBullTracker.Controllers
     [Route("weather")]
     public class WeatherForecastController : ControllerBase
     {
-        private SyncromaticsService Service;
+        private AVLProcessingService Service;
         
-        public WeatherForecastController(SyncromaticsService service)
+        public WeatherForecastController(AVLProcessingService service)
         {
             Service = service;
         }

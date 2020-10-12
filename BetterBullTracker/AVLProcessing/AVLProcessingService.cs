@@ -1,39 +1,40 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Databases;
-using BetterBullTracker.Models.Syncromatics;
 using BetterBullTracker.Spatial;
 using BetterBullTracker.WebSockets;
 using Flurl.Http;
+using SyncromaticsAPI;
 using System;
 using System.Collections.Generic;
 using System.Timers;
 
 namespace BetterBullTracker.AVLProcessing
 {
-    public class SyncromaticsService
+    public class AVLProcessingService
     {
-        private string URL = "https://usfbullrunner.com";
-
         private DatabaseService Database;
         private WebsocketService Websockets;
+
+        public SyncromaticsAPI.SyncromaticsAPI Syncromatics;
 
         private Dictionary<int, Route> Routes;
 
         private RouteProcessor RouteProcessor;
         private VehicleProcessor VehicleProcessor;
 
-        public SyncromaticsService(DatabaseService database, WebsocketService websockets)
+        public AVLProcessingService(DatabaseService database, WebsocketService websockets)
         {
             Database = database;
             Websockets = websockets;
-
+            
+            Syncromatics = new SyncromaticsAPI.SyncromaticsAPI("http://usfbullrunner.com", 3000);
             Routes = new Dictionary<int, Route>();
 
-            RouteProcessor = new RouteProcessor(this);
-            Routes = RouteProcessor.DownloadCurrentRoutes().Result;
+            RouteProcessor = new RouteProcessor();
+            Routes = RouteProcessor.ProcessRoutes(Syncromatics.GetRoutesAsync().Result).Result;
 
             VehicleProcessor = new VehicleProcessor(this, Routes);
-            //VehicleProcessor.Start();
+            VehicleProcessor.Start();
         }
 
         public WebsocketService GetWebsockets()
@@ -49,11 +50,6 @@ namespace BetterBullTracker.AVLProcessing
         public Dictionary<int, Route> GetRoutes()
         {
             return Routes;
-        }
-
-        public string GetURL()
-        {
-            return URL;
         }
     }
 }

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BetterBullTracker.Models.Syncromatics;
 
 namespace BetterBullTracker.Databases.Models
 {
@@ -16,6 +15,7 @@ namespace BetterBullTracker.Databases.Models
 
         public DateTime TimeLeftOrigin { get; set; }
         public DateTime TimeArrivedDestination { get; set; }
+        public int DayOfWeek { get; set; }
 
         public long GetTravelTime()
         {

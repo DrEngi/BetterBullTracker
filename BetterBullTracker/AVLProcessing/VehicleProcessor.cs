@@ -1,9 +1,9 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Databases;
 using BetterBullTracker.Databases.Models;
-using BetterBullTracker.Models.Syncromatics;
 using BetterBullTracker.Spatial;
 using Flurl.Http;
+using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,79 +14,34 @@ namespace BetterBullTracker.AVLProcessing
 {
     public class VehicleProcessor
     {
-        SyncromaticsService Syncromatics;
+        AVLProcessingService AVLProcessing;
         DatabaseService Database;
 
         private Dictionary<int, VehicleState> VehicleStates;
         private Dictionary<int, TripHistory> InProgressHistories;
         private Dictionary<int, Route> Routes;
-        private List<int> MissingVehicles;
 
-        private Timer Timer;
-
-        public VehicleProcessor(SyncromaticsService service, Dictionary<int, Route> routes)
+        public VehicleProcessor(AVLProcessingService service, Dictionary<int, Route> routes)
         {
-            Syncromatics = service;
+            AVLProcessing = service;
             Database = service.GetDatabase();
             Routes = routes;
 
             VehicleStates = new Dictionary<int, VehicleState>();
             InProgressHistories = new Dictionary<int, TripHistory>();
-            MissingVehicles = new List<int>();
         }
 
         public void Start()
         {
-            Timer = new Timer(3000);
-            Timer.AutoReset = true;
-            Timer.Elapsed += new ElapsedEventHandler(DownloadLatestVehicles);
-            Timer.Start();
+            AVLProcessing.Syncromatics.NewVehicleDownloaded += async (s, e) => await Syncromatics_NewVehicleDownloadedAsync(s, e);
+            AVLProcessing.Syncromatics.Start();
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="source"></param>
-        /// <param name="e"></param>
-        private async void DownloadLatestVehicles(object source, ElapsedEventArgs e)
+        private async Task Syncromatics_NewVehicleDownloadedAsync(object sender, SyncromaticsAPI.Events.VehicleDownloadedArgs e)
         {
-            string URL = Syncromatics.GetURL();
-
-            foreach (Route route in Routes.Values)
-            {
-                List<SyncromaticsVehicle> vehicles = await $"{URL}/Route/{route.RouteID}/Vehicles".GetJsonAsync<List<SyncromaticsVehicle>>();
-                foreach (SyncromaticsVehicle vehicle in vehicles)
-                {
-                    if (VehicleStates.ContainsKey(vehicle.ID)) await HandleExistingVehicle(vehicle);
-                    else HandleNewVehicle(vehicle);
-                }
-
-                /*
-                 * At closing time, buses will straight up drop out of Syncromatic's view nearly immediately.
-                 * Because this runs all the time, we want to make sure we don't mix up routes when buses restart
-                 * the next day, and we also want to ensure that buses that take a break (and switch routes or turn off)
-                 * aren't being tracked.
-                 */
-                foreach (VehicleState state in VehicleStates.Values.ToList().FindAll(x => x.RouteID == route.RouteID))
-                {
-                    if (vehicles.FindIndex(x => x.ID == state.ID) != -1)
-                    {
-                        if (MissingVehicles.Contains(state.ID)) MissingVehicles.Remove(state.ID);
-                    }
-                    else
-                    {
-                        if (MissingVehicles.Contains(state.ID))
-                        {
-                            Console.WriteLine($"Vehicle {state.BusNumber} was not found twice, removing.");
-
-                            MissingVehicles.Remove(state.ID);
-                            if (InProgressHistories.ContainsKey(state.ID)) InProgressHistories.Remove(state.ID);
-                            VehicleStates.Remove(state.ID);
-                        }
-                        else MissingVehicles.Add(state.ID);
-                    }
-                }
-            }
+            Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
+            if (VehicleStates.ContainsKey(e.Vehicle.ID)) await HandleExistingVehicle(e.Vehicle);
+            else HandleNewVehicle(e.Vehicle);
         }
 
         /// <summary>
@@ -98,7 +53,7 @@ namespace BetterBullTracker.AVLProcessing
         {
             VehicleState state = new VehicleState(vehicle);
             Route route = Routes[vehicle.RouteID];
-            Stop stop = StopResolver.GetVehicleStop(route, state);
+            Stop stop = SpatialMatcher.GetVehicleStop(route, state);
 
             /*
              * if this vehicle is new, we want to make sure there's no wonkiness
@@ -114,6 +69,10 @@ namespace BetterBullTracker.AVLProcessing
 
             InProgressHistories.Add(vehicle.ID, history);
             VehicleStates.Add(vehicle.ID, state);
+
+            //we have not seen this vehicle before. let's check where it is
+            StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
+
         }
 
         /// <summary>
@@ -125,10 +84,17 @@ namespace BetterBullTracker.AVLProcessing
         {
             VehicleState state = VehicleStates[vehicle.ID];
             if (state.GetLatestVehicleReport().Updated.Equals(vehicle.Updated)) return; //we aren't interested in reports that haven't been updated
+            if (state.GetLatestVehicleReport().RouteID != vehicle.RouteID)
+            {
+                //if a vehicle changes routes, remove its state and restart
+                VehicleStates.Remove(vehicle.ID);
+                return;
+            }
             state.AddVehicleReport(vehicle);
 
             Route route = Routes[vehicle.RouteID];
-            Stop stop = StopResolver.GetVehicleStop(route, state);
+            Stop stop = SpatialMatcher.GetVehicleStop(route, state);
+            StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
 
             if (stop != null)
             {
@@ -172,16 +138,16 @@ namespace BetterBullTracker.AVLProcessing
                      * stops vehicles have passed or not.
                      * 
                      * the reason for the weird math after the || is because we don't want to trigger this when the bus gets back to its original stop
-                     * TODO: BROKEN
+                     * TODO: BROKEN, maybe?
                      */
-                    if (thisStopIndex - originalStopIndex != 1 || Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)
+                    if (thisStopIndex - originalStopIndex != 1 || (thisStopIndex == 0 && originalStopIndex == route.RouteStops.Count - 1))
                     {
                         Console.WriteLine($"Vehicle {vehicle.Name} has missed a stop!");
-                        for (int i = 0; i < thisStopIndex - originalStopIndex; i++) state.IncrementStopIndex(route);
+                        //for (int i = 0; i < thisStopIndex - originalStopIndex; i++) state.IncrementStopIndex(route);
                     }
                     else state.IncrementStopIndex(route);
 
-                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && (thisStopIndex - originalStopIndex == 1 || Math.Abs(thisStopIndex - originalStopIndex) != route.RouteStops.Count - 1)) await Database.GetTripHistoryCollection().InsertTripHistory(history);
+                    if (history.TimeLeftOrigin != DateTime.UnixEpoch && (thisStopIndex - originalStopIndex != 1 || (thisStopIndex == 0 && originalStopIndex == route.RouteStops.Count - 1))) await Database.GetTripHistoryCollection().InsertTripHistory(history);
                     else Console.WriteLine("a trip history was thrown out!"); //see above
                 }
                 else
@@ -196,8 +162,14 @@ namespace BetterBullTracker.AVLProcessing
                 {
                     InProgressHistories[vehicle.ID].TimeLeftOrigin = DateTime.Parse(vehicle.AcceptableUpdated());
                 }
+
+                //make sure it's still on route
+                if (stopPath == null)
+                {
+                    Console.WriteLine("Vehicle " + vehicle.Name + " not on route");
+                }
             }
-            await Syncromatics.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state));
+            await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state));
         }
     }
 }

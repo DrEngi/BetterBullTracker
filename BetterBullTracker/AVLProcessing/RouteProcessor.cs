@@ -1,8 +1,8 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
-using BetterBullTracker.AVLProcessing.Models.Syncromatics;
 using BetterBullTracker.Mapbox;
 using BetterBullTracker.Spatial;
 using Flurl.Http;
+using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,58 +13,93 @@ namespace BetterBullTracker.AVLProcessing
 {
     public class RouteProcessor
     {
-        private SyncromaticsService Syncromatics;
-
-        public RouteProcessor(SyncromaticsService syncromatics)
+        public async Task<Dictionary<int, Route>> ProcessRoutes(List<SyncromaticsRoute> routes)
         {
-            Syncromatics = syncromatics;
+            Dictionary<int, Route> newRoutes = new Dictionary<int, Route>();
+            foreach (SyncromaticsRoute route in routes)
+            {
+                Route newRoute = new Route(route);
+                newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
+                newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
+                newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
+                newRoute.StopPaths = ParseStopPaths(route.Waypoints, route.Stops);
+                newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);
+
+                newRoutes.Add(route.ID, newRoute);
+            }
+            return newRoutes;
         }
 
-        public async Task<Dictionary<int, Route>> DownloadCurrentRoutes()
+        private double CalculateTotalDistance(List<SyncromaticsWaypoint> waypoints)
         {
-            string URL = Syncromatics.GetURL();
-
-            List<SyncromaticsRegion> regions = await (URL + "/Regions").GetJsonAsync<List<SyncromaticsRegion>>();
-            Dictionary<int, Route> routes = new Dictionary<int, Route>();
-
-            foreach (SyncromaticsRegion region in regions)
+            double totalRouteDistance = 0.0;
+            for (int i = 0; i < waypoints.Count; i += 2)
             {
-                List<SyncromaticsRoute> syncRoutes = await $"{URL}/Region/{region.ID}/Routes".GetJsonAsync<List<SyncromaticsRoute>>();
-                foreach (SyncromaticsRoute route in syncRoutes)
+                SyncromaticsWaypoint firstPoint = waypoints[i];
+                SyncromaticsWaypoint secondPoint = waypoints[i + 1];
+                totalRouteDistance += new Coordinate(firstPoint.Latitude, firstPoint.Longitude).DistanceTo(new Coordinate(secondPoint.Latitude, secondPoint.Longitude));
+            }
+            return totalRouteDistance;
+        }
+
+        private List<StopPath> ParseStopPaths(List<SyncromaticsWaypoint> waypoints, List<SyncromaticsStop> stops)
+        {
+            List<StopPath> paths = new List<StopPath>();
+            for (int i = 0; i < stops.Count; i++)
+            {
+                SyncromaticsStop stop = stops[i];
+                
+                //calculate stop paths
+                int firstWaypointIndex = waypoints.FindIndex(x => x.Latitude == stop.Latitude && x.Longitude == stop.Longitude);
+                if (i != stops.Count - 1)
                 {
-                    List<SyncromaticsRouteWaypoint> syncWaypoints = (await $"{URL}/Route/{route.ID}/Waypoints".GetJsonAsync<List<List<SyncromaticsRouteWaypoint>>>())[0];
-                    List<SyncromaticsStop> syncStops = await $"{URL}/Route/{route.ID}/Direction/0/Stops".GetJsonAsync<List<SyncromaticsStop>>();
+                    int lastWayPointIndex = waypoints.FindIndex(x => x.Latitude == stops[i + 1].Latitude && x.Longitude == stops[i + 1].Longitude);
+                    List<Coordinate> coordinates = new List<Coordinate>();
 
-                    Route newRoute = new Route(route);
-                    newRoute.RouteWaypoints = await ParseWaypoints(syncWaypoints);
-                    newRoute.MapboxMatchedWaypoints = await MapboxMatch(syncWaypoints);
-                    newRoute.RouteStops = ParseStops(syncWaypoints, syncStops);
+                    for (int j = firstWaypointIndex; j < lastWayPointIndex + 1; j++)
+                    {
+                        coordinates.Add(new Coordinate(waypoints[j].Latitude, waypoints[j].Longitude));
+                    }
 
-                    routes.Add(route.ID, newRoute);
+                    double totalDistance = 0.0;
+                    for (int j = 0; j+1 < coordinates.Count; j += 2)
+                    {
+                        //weird exception here idk when Count = 8
+                        totalDistance += coordinates[j].DistanceTo(coordinates[j + 1]);
+                    }
+
+                    StopPath path = new StopPath()
+                    {
+                        OriginStopID = stop.ID,
+                        DestinationStopID = stops[i + 1].ID,
+                        Path = coordinates,
+                        TotalPathDistance = totalDistance
+                    };
+                    paths.Add(path);
                 }
             }
-            return routes;
+            return paths;
         }
 
-        private async Task<List<RouteWaypoint>> ParseWaypoints(List<SyncromaticsRouteWaypoint> syncWaypoints)
+        private async Task<List<RouteWaypoint>> ParseWaypoints(List<SyncromaticsWaypoint> syncWaypoints)
         {
             List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
-            foreach (SyncromaticsRouteWaypoint waypoint in syncWaypoints)
+            foreach (SyncromaticsWaypoint waypoint in syncWaypoints)
             {
                 waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude));
             }
             return waypoints;
         }
 
-        private async Task<List<RouteWaypoint>> MapboxMatch(List<SyncromaticsRouteWaypoint> syncWaypoints)
+        private async Task<List<RouteWaypoint>> MapboxMatch(List<SyncromaticsWaypoint> syncWaypoints)
         {
             string url = "https://api.mapbox.com/matching/v5/mapbox/driving/";
             List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
 
-            foreach(List<SyncromaticsRouteWaypoint> sepList in SplitList<SyncromaticsRouteWaypoint>(syncWaypoints, 99))
+            foreach(List<SyncromaticsWaypoint> sepList in SplitList<SyncromaticsWaypoint>(syncWaypoints, 99))
             {
                 string coordsForMapbox = "";
-                foreach(SyncromaticsRouteWaypoint waypoint in sepList)
+                foreach(SyncromaticsWaypoint waypoint in sepList)
                 {
                     coordsForMapbox += $"{waypoint.Longitude},{waypoint.Latitude};";
                 }
@@ -88,21 +123,43 @@ namespace BetterBullTracker.AVLProcessing
             return waypoints;
         }
 
-        private List<Stop> ParseStops(List<SyncromaticsRouteWaypoint> waypoints, List<SyncromaticsStop> syncromaticsStops)
+        private List<Stop> ParseStops(List<SyncromaticsWaypoint> waypoints, List<SyncromaticsStop> syncromaticsStops)
         {
             List<Stop> stops = new List<Stop>();
 
-            foreach (SyncromaticsStop stop in syncromaticsStops)
+            for (int i = 0; i < syncromaticsStops.Count; i++)
             {
-                //this block of code is responsible for determining from which direction buses would approach this stop
-                int waypointIndex = waypoints.FindIndex(x => x.Latitude == stop.Latitude && x.Longitude == stop.Longitude);
-                if (waypointIndex != -1)
-                {
-                    SyncromaticsRouteWaypoint waypoint = waypoints[waypointIndex];
+                SyncromaticsStop stop = syncromaticsStops[i];
 
-                    if (waypointIndex != waypoints.Count - 1)
+                //calculate stop paths
+                int firstWaypointIndex = waypoints.FindIndex(x => x.Latitude == stop.Latitude && x.Longitude == stop.Longitude);
+                if (i != syncromaticsStops.Count - 1)
+                {
+                    int lastWayPointIndex = waypoints.FindIndex(x => x.Latitude == syncromaticsStops[i + 1].Latitude && x.Longitude == syncromaticsStops[i + 1].Longitude);
+                    List<Coordinate> coordinates = new List<Coordinate>();
+
+                    for (int j = firstWaypointIndex; j < lastWayPointIndex + 1; j++)
                     {
-                        SyncromaticsRouteWaypoint nextWaypoint = waypoints[waypointIndex + 1];
+                        coordinates.Add(new Coordinate(waypoints[j].Latitude, waypoints[j].Longitude));
+                    }
+
+                    StopPath path = new StopPath()
+                    {
+                        OriginStopID = stop.ID,
+                        DestinationStopID = syncromaticsStops[i + 1].ID,
+                        Path = coordinates
+                    };
+                }
+                
+
+                //this block of code is responsible for determining from which direction buses would approach this stop
+                if (firstWaypointIndex != -1)
+                {
+                    SyncromaticsWaypoint waypoint = waypoints[firstWaypointIndex];
+
+                    if (firstWaypointIndex != waypoints.Count - 1)
+                    {
+                        SyncromaticsWaypoint nextWaypoint = waypoints[firstWaypointIndex + 1];
 
                         Coordinate firstCoord = new Coordinate(waypoint.Latitude, waypoint.Longitude);
                         Coordinate secondCoord = new Coordinate(nextWaypoint.Latitude, nextWaypoint.Longitude);

@@ -1,5 +1,4 @@
-﻿using BetterBullTracker.Models.Syncromatics;
-using BetterBullTracker.Predictions.Kalman;
+﻿using BetterBullTracker.Predictions.Kalman;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +7,7 @@ using System.Threading.Tasks;
 using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Databases.Models;
 using BetterBullTracker.Databases;
+using SyncromaticsAPI.SyncromaticsModels;
 
 namespace BetterBullTracker.Predictions
 {

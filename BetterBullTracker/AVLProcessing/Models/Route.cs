@@ -1,5 +1,5 @@
-﻿using BetterBullTracker.AVLProcessing.Models.Syncromatics;
-using BetterBullTracker.Spatial;
+﻿using BetterBullTracker.Spatial;
+using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,10 +13,12 @@ namespace BetterBullTracker.AVLProcessing.Models
         public string RouteName { get; set; }
         public string Color { get; set; }
         public int RouteID { get; set; }
+        public double RouteDistance;
 
         public List<RouteWaypoint> RouteWaypoints { get; set; }
         public List<RouteWaypoint> MapboxMatchedWaypoints { get; set; }
         public List<Stop> RouteStops { get; set; }
+        public List<StopPath> StopPaths;
 
         public Route(SyncromaticsRoute route)
         {
@@ -27,6 +29,7 @@ namespace BetterBullTracker.AVLProcessing.Models
 
             RouteWaypoints = new List<RouteWaypoint>();
             MapboxMatchedWaypoints = new List<RouteWaypoint>();
+            StopPaths = new List<StopPath>();
             RouteStops = new List<Stop>();
         }
 

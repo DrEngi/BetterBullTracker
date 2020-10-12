@@ -15,5 +15,9 @@
     <Folder Include="Predictions\HistoricalAverage\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SyncromaticsAPI\SyncromaticsAPI.csproj" />
+  </ItemGroup>
+
 
 </Project>
