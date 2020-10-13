@@ -10,8 +10,6 @@ namespace BetterBullTracker.Spatial
         public double Latitude { get; set; }
         public double Longitude { get; set; }
 
-        public Coordinate() { }
-
         public Coordinate(double latitude, double longitude)
         {
             Latitude = latitude;
@@ -22,7 +20,7 @@ namespace BetterBullTracker.Spatial
         /// Calculates distance to other coordinate
         /// </summary>
         /// <param name="other"></param>
-        /// <returns>distance in meters</returns>
+        /// <returns>distance in miles</returns>
         public double DistanceTo(Coordinate other)
         {
             var d1 = this.Latitude * (Math.PI / 180.0);
@@ -79,6 +77,17 @@ namespace BetterBullTracker.Spatial
         public override String ToString()
         {
             return $"{Latitude}, {Longitude}";
+        }
+
+        public override bool Equals(object obj)
+        {
+            Coordinate other = (Coordinate)obj;
+            return other.Latitude == this.Latitude && other.Longitude == this.Longitude;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
         }
     }
 }

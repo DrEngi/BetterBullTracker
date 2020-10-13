@@ -5,6 +5,7 @@ using Flurl.Http;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -25,6 +26,16 @@ namespace BetterBullTracker.AVLProcessing
                 newRoute.StopPaths = ParseStopPaths(route.Waypoints, route.Stops);
                 newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);
 
+                double totalDistance = 0.0;
+                int stopCount = 0;
+                int wayPointCount = 0;
+                foreach (StopPath paths in newRoute.StopPaths)
+                {
+                    totalDistance += paths.TotalPathDistance;
+                    stopCount += 2;
+                    wayPointCount += paths.Path.Count;
+                }
+
                 newRoutes.Add(route.ID, newRoute);
             }
             return newRoutes;
@@ -32,8 +43,6 @@ namespace BetterBullTracker.AVLProcessing
 
         private double CalculateTotalDistance(List<SyncromaticsWaypoint> waypoints)
         {
-            //TODO: ALL COORDINATES IN PAIRS ARE MEASURED ONLY BY THEIR PAIRS
-            //THEY ARE NOT CONNECTED!!!
             double totalRouteDistance = 0.0;
             for (int i = 0; i < waypoints.Count; i++)
             {
@@ -44,13 +53,15 @@ namespace BetterBullTracker.AVLProcessing
                 Coordinate firstPoint = new Coordinate(waypoints[i].Latitude, waypoints[i].Longitude);
                 
                 totalRouteDistance += firstPoint.DistanceTo(secondPoint);
-                Console.WriteLine("distance now " + totalRouteDistance);
             }
             return totalRouteDistance;
         }
 
         private List<StopPath> ParseStopPaths(List<SyncromaticsWaypoint> waypoints, List<SyncromaticsStop> stops)
         {
+            //this is REALLY messy but at least it works for now
+            //TODO: Refactor
+            
             List<StopPath> paths = new List<StopPath>();
             for (int i = 0; i < stops.Count; i++)
             {
@@ -71,14 +82,42 @@ namespace BetterBullTracker.AVLProcessing
                     double totalDistance = 0.0;
                     for (int j = 0; j < coordinates.Count; j++)
                     {
-                        if (j == coordinates.Count - 1) totalDistance += coordinates[j].DistanceTo(coordinates[0]);
-                        else totalDistance += coordinates[j].DistanceTo(coordinates[j + 1]);
+                        if (j != coordinates.Count - 1) totalDistance += coordinates[j].DistanceTo(coordinates[j + 1]);
                     }
 
                     StopPath path = new StopPath()
                     {
                         OriginStopID = stop.ID,
                         DestinationStopID = stops[i + 1].ID,
+                        Path = coordinates,
+                        TotalPathDistance = totalDistance
+                    };
+                    paths.Add(path);
+                }
+                else if (i == stops.Count - 1)
+                {
+                    int lastWayPointIndex = waypoints.FindIndex(x => x.Latitude == stops[0].Latitude && x.Longitude == stops[0].Longitude);
+                    List<Coordinate> coordinates = new List<Coordinate>();
+
+                    for (int j = firstWaypointIndex; j < waypoints.Count; j++)
+                    {
+                        coordinates.Add(new Coordinate(waypoints[j].Latitude, waypoints[j].Longitude));
+                    }
+                    for (int j = 0; j <= lastWayPointIndex; j++)
+                    {
+                        coordinates.Add(new Coordinate(waypoints[j].Latitude, waypoints[j].Longitude));
+                    }
+
+                    double totalDistance = 0.0;
+                    for (int j = 0; j < coordinates.Count; j++)
+                    {
+                        if (j != coordinates.Count - 1) totalDistance += coordinates[j].DistanceTo(coordinates[j + 1]);
+                    }
+
+                    StopPath path = new StopPath()
+                    {
+                        OriginStopID = stop.ID,
+                        DestinationStopID = stops[0].ID,
                         Path = coordinates,
                         TotalPathDistance = totalDistance
                     };
