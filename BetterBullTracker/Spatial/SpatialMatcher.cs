@@ -58,10 +58,55 @@ namespace BetterBullTracker.Spatial
         public static StopPath GetStopPath(Route route, VehicleState state)
         {
             SyncromaticsVehicle report = state.GetLatestVehicleReport();
+            Coordinate vehicleLocation = new Coordinate(report.Latitude, report.Longitude);
+            
             return route.StopPaths.Find(x =>
             {
-                int find = x.Path.FindIndex(y => y.Latitude != report.Latitude || y.Longitude != report.Longitude);
-                return find != -1;
+                for (int i = 0; i < x.Path.Count-1; i+=2)
+                {
+                    Coordinate firstCoord = new Coordinate(x.Path[i].Latitude, x.Path[i].Longitude);
+                    Coordinate secondCoord = new Coordinate(x.Path[i+1].Latitude, x.Path[i+1].Longitude);
+
+                    double bearing = firstCoord.GetBearingTo(secondCoord);
+                    string direction = Coordinate.DegreesToCardinal(bearing);
+
+                    double minimum = Double.MaxValue;
+
+
+                    if (x.Path[i].Latitude - x.Path[i + 1].Latitude < 0.005 && direction.Equals(report.Heading))
+                    {
+                        double minLongitude = x.Path[i].Longitude;
+                        double maxLongitude;
+                        if (x.Path[i + 1].Longitude < minLongitude)
+                        {
+                            maxLongitude = minLongitude;
+                            minLongitude = x.Path[i + 1].Longitude;
+                        }
+                        else maxLongitude = x.Path[i + 1].Longitude;
+
+                        if (Math.Abs(vehicleLocation.Latitude - x.Path[i].Latitude) < 0.005 && (vehicleLocation.Longitude >= minLongitude && vehicleLocation.Longitude <= maxLongitude))
+                        {
+                            return true;
+                        }
+                    }
+                    else if (x.Path[i].Longitude - x.Path[i+1].Longitude < 0.005 && direction.Equals(report.Heading))
+                    {
+                        double minLatitude = x.Path[i].Latitude;
+                        double maxLatitude;
+                        if (x.Path[i + 1].Latitude < minLatitude)
+                        {
+                            maxLatitude = minLatitude;
+                            minLatitude = x.Path[i + 1].Latitude;
+                        }
+                        else maxLatitude = x.Path[i + 1].Latitude;
+
+                        if (Math.Abs(vehicleLocation.Longitude - x.Path[i].Longitude) < 0.005 && (vehicleLocation.Latitude >= minLatitude && vehicleLocation.Latitude <= maxLatitude))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             });
         }
     }

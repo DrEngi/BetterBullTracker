@@ -14,13 +14,14 @@ namespace BetterBullTracker.WebSockets
         
         public WebsocketService()
         {
-            Server = new WatsonWsServer("*", 5003, false);
+            Server = new WatsonWsServer("127.0.0.1", 5003, false);
             Clients = new List<string>();
 
             Server.ClientConnected += Server_ClientConnected;
             Server.ClientDisconnected += Server_ClientDisconnected;
             Server.MessageReceived += Server_MessageReceived;
 
+            Console.WriteLine("starting server");
             Server.Start();
         }
 
@@ -39,14 +40,14 @@ namespace BetterBullTracker.WebSockets
 
         private void Server_ClientDisconnected(object sender, ClientDisconnectedEventArgs e)
         {
-            Console.WriteLine("new client connected");
-            Clients.Add(e.IpPort);
+            Console.WriteLine("client disconnected");
+            Clients.Remove(e.IpPort);
         }
 
         private void Server_ClientConnected(object sender, ClientConnectedEventArgs e)
         {
-            Console.WriteLine("client disconnected");
-            Clients.Remove(e.IpPort);
+            Console.WriteLine("new client connected");
+            Clients.Add(e.IpPort);
         }
     }
 }

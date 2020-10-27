@@ -24,7 +24,7 @@ namespace BetterBullTracker.AVLProcessing
                 //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
                 newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
                 newRoute.StopPaths = ParseStopPaths(route.Waypoints, route.Stops);
-                newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);
+                newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);   
 
                 double totalDistance = 0.0;
                 int stopCount = 0;

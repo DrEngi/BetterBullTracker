@@ -18,6 +18,9 @@ namespace BetterBullTracker.WebSockets
         public int RouteID { get; set; }
         public int StopIndex { get; set; }
 
+        public int DepartingStopID { get; set; }
+        public int ArrivingStopID { get; set; }
+
         public WSVehicleUpdateMsg(VehicleState state)
         {
             VehicleNumber = state.BusNumber;
@@ -26,6 +29,21 @@ namespace BetterBullTracker.WebSockets
             PAXPercentage = state.Capacity;
             RouteID = state.RouteID;
             StopIndex = state.StopIndex;
+        }
+
+        public WSVehicleUpdateMsg(VehicleState state, StopPath path) : this(state)
+        {
+            if (path == null)
+            {
+                this.DepartingStopID = 0;
+                this.ArrivingStopID = 0;
+            }
+            else
+            {
+                this.DepartingStopID = path.OriginStopID;
+                this.ArrivingStopID = path.DestinationStopID;
+            }
+            
         }
     }
 }
