@@ -42,16 +42,6 @@ namespace BetterBullTracker.Spatial
             return ToBearing(Math.Atan2(dLon, dPhi));
         }
 
-        private static double DegreeBearing(double lat1, double lon1, double lat2, double lon2)
-        {
-            var dLon = ToRad(lon2 - lon1);
-            var dPhi = Math.Log(
-                Math.Tan(ToRad(lat2) / 2 + Math.PI / 4) / Math.Tan(ToRad(lat1) / 2 + Math.PI / 4));
-            if (Math.Abs(dLon) > Math.PI)
-                dLon = dLon > 0 ? -(2 * Math.PI - dLon) : (2 * Math.PI + dLon);
-            return ToBearing(Math.Atan2(dLon, dPhi));
-        }
-
         private static double ToRad(double degrees)
         {
             return degrees * (Math.PI / 180);

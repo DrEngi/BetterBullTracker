@@ -59,55 +59,41 @@ namespace BetterBullTracker.Spatial
         {
             SyncromaticsVehicle report = state.GetLatestVehicleReport();
             Coordinate vehicleLocation = new Coordinate(report.Latitude, report.Longitude);
-            
-            return route.StopPaths.Find(x =>
+
+            double minimum = Double.MaxValue;
+            StopPath selectedPath = null;
+
+            List<StopPath> paths = route.StopPaths;
+            paths.Reverse();
+            foreach(StopPath x in paths)
+            //for (int k = route.StopPaths.Count; k > -1; --k)
             {
-                for (int i = 0; i < x.Path.Count-1; i+=2)
+                for (int i = 0; i < x.Path.Count - 1; i += 2)
                 {
                     Coordinate firstCoord = new Coordinate(x.Path[i].Latitude, x.Path[i].Longitude);
-                    Coordinate secondCoord = new Coordinate(x.Path[i+1].Latitude, x.Path[i+1].Longitude);
+                    Coordinate secondCoord = new Coordinate(x.Path[i + 1].Latitude, x.Path[i + 1].Longitude);
 
                     double bearing = firstCoord.GetBearingTo(secondCoord);
                     string direction = Coordinate.DegreesToCardinal(bearing);
 
-                    double minimum = Double.MaxValue;
-
-
-                    if (x.Path[i].Latitude - x.Path[i + 1].Latitude < 0.005 && direction.Equals(report.Heading))
+                    if (direction.Equals(report.Heading))
                     {
-                        double minLongitude = x.Path[i].Longitude;
-                        double maxLongitude;
-                        if (x.Path[i + 1].Longitude < minLongitude)
+                        if (secondCoord.DistanceTo(vehicleLocation) < minimum)
                         {
-                            maxLongitude = minLongitude;
-                            minLongitude = x.Path[i + 1].Longitude;
+                            Console.WriteLine($"setting, {firstCoord.DistanceTo(vehicleLocation)}, min was {minimum}");
+                            minimum = secondCoord.DistanceTo(vehicleLocation);
+                            selectedPath = x;
                         }
-                        else maxLongitude = x.Path[i + 1].Longitude;
-
-                        if (Math.Abs(vehicleLocation.Latitude - x.Path[i].Latitude) < 0.005 && (vehicleLocation.Longitude >= minLongitude && vehicleLocation.Longitude <= maxLongitude))
+                        if (firstCoord.DistanceTo(vehicleLocation) < minimum)
                         {
-                            return true;
-                        }
-                    }
-                    else if (x.Path[i].Longitude - x.Path[i+1].Longitude < 0.005 && direction.Equals(report.Heading))
-                    {
-                        double minLatitude = x.Path[i].Latitude;
-                        double maxLatitude;
-                        if (x.Path[i + 1].Latitude < minLatitude)
-                        {
-                            maxLatitude = minLatitude;
-                            minLatitude = x.Path[i + 1].Latitude;
-                        }
-                        else maxLatitude = x.Path[i + 1].Latitude;
-
-                        if (Math.Abs(vehicleLocation.Longitude - x.Path[i].Longitude) < 0.005 && (vehicleLocation.Latitude >= minLatitude && vehicleLocation.Latitude <= maxLatitude))
-                        {
-                            return true;
+                            Console.WriteLine($"setting, {firstCoord.DistanceTo(vehicleLocation)}, min was {minimum}");
+                            minimum = firstCoord.DistanceTo(vehicleLocation);
+                            selectedPath = x;
                         }
                     }
                 }
-                return false;
-            });
+            }
+            return selectedPath;
         }
     }
 }

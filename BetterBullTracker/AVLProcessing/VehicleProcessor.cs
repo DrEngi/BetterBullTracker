@@ -38,9 +38,9 @@ namespace BetterBullTracker.AVLProcessing
 
         public void Start()
         {
-            AVLProcessing.Syncromatics.NewVehicleDownloaded += async (s, e) => await Syncromatics_NewVehicleDownloadedAsync(s, e);
-            AVLProcessing.Syncromatics.Start();
-            /*
+            //AVLProcessing.Syncromatics.NewVehicleDownloaded += async (s, e) => await Syncromatics_NewVehicleDownloadedAsync(s, e);
+            //AVLProcessing.Syncromatics.Start();
+            
             String[] folder = Directory.GetDirectories("/Users/nickn/Downloads/vehicles/");
             List<String[]> directories = new List<String[]>();
 
@@ -51,27 +51,30 @@ namespace BetterBullTracker.AVLProcessing
 
             Task.Run(async () =>
             {
-                for (int i = 0; i < 999; i++)
+                for (int i = 0; i < 99999; i++)
                 {
                     foreach (string[] directory in directories)
                     {
                         if (i > directory.Length - 1) continue;
                         VehicleDownloadedArgs e = Newtonsoft.Json.JsonConvert.DeserializeObject<VehicleDownloadedArgs>(File.ReadAllText(directory[i]));
-                        await this.Syncromatics_NewVehicleDownloadedAsync(this, e);
+                        if (e.Vehicle.Name.Equals("1539")) await this.Syncromatics_NewVehicleDownloadedAsync(this, e);
                     }
                     Thread.Sleep(3000);
                 }
                 
             });
-            */
+            
         }
 
         private async Task Syncromatics_NewVehicleDownloadedAsync(object sender, SyncromaticsAPI.Events.VehicleDownloadedArgs e)
         {
             Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
 
-            if (VehicleStates.ContainsKey(e.Vehicle.ID)) await HandleExistingVehicle(e.Vehicle);
-            else HandleNewVehicle(e.Vehicle);
+            //if (e.Route.ID == 428)
+            //{
+                if (VehicleStates.ContainsKey(e.Vehicle.ID)) await HandleExistingVehicle(e.Vehicle);
+                else HandleNewVehicle(e.Vehicle);
+            //}
         }
 
         /// <summary>
