@@ -43,12 +43,30 @@ namespace SyncromaticsAPI
 
         private async void DownloadVehicles(object source, ElapsedEventArgs e)
         {
-            foreach (SyncromaticsRoute route in Routes)
+            TimeZoneInfo easternZone;
+            try
             {
-                List<SyncromaticsVehicle> vehicles = await $"{BackendURL}/Route/{route.ID}/Vehicles".GetJsonAsync<List<SyncromaticsVehicle>>();
-                foreach (SyncromaticsVehicle vehicle in vehicles)
+                easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                easternZone = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+            }
+
+            DateTime now = TimeZoneInfo.ConvertTime(DateTime.Now, easternZone);
+            Console.WriteLine(now);
+
+            if (now.Hour >=7 || (now.Hour == 6 && now.Minute >= 45))
+            {
+                Console.WriteLine("go");
+                
+                foreach (SyncromaticsRoute route in Routes)
                 {
-                    MainAPI.TriggerNewVehicleDownloaded(route, vehicle);
+                    List<SyncromaticsVehicle> vehicles = await $"{BackendURL}/Route/{route.ID}/Vehicles".GetJsonAsync<List<SyncromaticsVehicle>>();
+                    foreach (SyncromaticsVehicle vehicle in vehicles)
+                    {
+                        MainAPI.TriggerNewVehicleDownloaded(route, vehicle);
+                    }
                 }
             }
         }

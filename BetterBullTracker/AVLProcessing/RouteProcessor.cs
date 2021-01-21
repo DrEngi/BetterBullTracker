@@ -211,7 +211,6 @@ namespace BetterBullTracker.AVLProcessing
                         Coordinate secondCoord = new Coordinate(nextWaypoint.Latitude, nextWaypoint.Longitude);
 
                         double bearing = firstCoord.GetBearingTo(secondCoord);
-                        Console.WriteLine($"Stop {stop.Name} has bearing of {bearing} to next waypoint, is {Coordinate.DegreesToCardinal(bearing)}");
 
                         stops.Add(new Stop(firstCoord, stop, Coordinate.DegreesToCardinal(bearing)));
                     }

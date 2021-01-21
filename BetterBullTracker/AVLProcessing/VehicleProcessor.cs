@@ -40,41 +40,42 @@ namespace BetterBullTracker.AVLProcessing
         {
             //AVLProcessing.Syncromatics.NewVehicleDownloaded += async (s, e) => await Syncromatics_NewVehicleDownloadedAsync(s, e);
             //AVLProcessing.Syncromatics.Start();
-            
-            String[] folder = Directory.GetDirectories("/Users/nickn/Downloads/vehicles/");
-            List<String[]> directories = new List<String[]>();
 
-            foreach(string folderName in folder)
+            System.Timers.Timer Timer = new System.Timers.Timer(3000);
+            Timer.AutoReset = true;
+            Timer.Elapsed += new ElapsedEventHandler(TestTriggerAsync);
+            Timer.Start();
+        }
+
+        int i = 1;
+        private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
+        {
+            foreach(VehiclePosition position in await Database.GetPositionCollection().GetPositionAsync(i))
             {
-                directories.Add(Directory.GetFiles(folderName));
+                await Syncromatics_NewVehicleDownloadedAsync(this, position.Args);
             }
-
-            Task.Run(async () =>
-            {
-                for (int i = 0; i < 99999; i++)
-                {
-                    foreach (string[] directory in directories)
-                    {
-                        if (i > directory.Length - 1) continue;
-                        VehicleDownloadedArgs e = Newtonsoft.Json.JsonConvert.DeserializeObject<VehicleDownloadedArgs>(File.ReadAllText(directory[i]));
-                        if (e.Vehicle.Name.Equals("1539")) await this.Syncromatics_NewVehicleDownloadedAsync(this, e);
-                    }
-                    Thread.Sleep(3000);
-                }
-                
-            });
-            
+            i++;
         }
 
         private async Task Syncromatics_NewVehicleDownloadedAsync(object sender, SyncromaticsAPI.Events.VehicleDownloadedArgs e)
         {
             Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
+            /*
+            await Database.GetPositionCollection().InsertPositionAsync(new VehiclePosition()
+            {
+                RouteID = e.Route.ID,
+                VehicleID = e.Vehicle.ID,
+                VehicleName = e.Vehicle.Name,
+                RouteName = e.Route.Name,
+                Longitude = e.Vehicle.Longitude,
+                Latitude = e.Vehicle.Latitude,
+                Time = DateTime.Now.ToUniversalTime()
+            });
+            */
 
-            //if (e.Route.ID == 428)
-            //{
-                if (VehicleStates.ContainsKey(e.Vehicle.ID)) await HandleExistingVehicle(e.Vehicle);
-                else HandleNewVehicle(e.Vehicle);
-            //}
+            
+            if (VehicleStates.ContainsKey(e.Vehicle.ID)) await HandleExistingVehicle(e.Vehicle);
+            else HandleNewVehicle(e.Vehicle);
         }
 
         /// <summary>
@@ -138,7 +139,6 @@ namespace BetterBullTracker.AVLProcessing
             StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
 
             
-
             Console.WriteLine("sending message");
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, stopPath));
         }

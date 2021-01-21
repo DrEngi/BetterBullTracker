@@ -37,6 +37,8 @@ namespace BetterBullTracker.Spatial
             {
 
             }
+
+            return 0;
         }
 
     }

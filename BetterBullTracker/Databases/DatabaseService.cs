@@ -15,6 +15,8 @@ namespace BetterBullTracker.Databases
 
         private TripHistoryCollection TripHistory;
         private KalmanErrorCollection KalmanError;
+        private BuildingCollection Buildings;
+        private PositionCollection Positions;
 
         public DatabaseService()
         {
@@ -25,6 +27,9 @@ namespace BetterBullTracker.Databases
 
             TripHistory = new TripHistoryCollection(Database);
             KalmanError = new KalmanErrorCollection(Database);
+            Buildings = new BuildingCollection(Database);
+            Positions = new PositionCollection(Database);
+
         }
 
         public TripHistoryCollection GetTripHistoryCollection()
@@ -35,6 +40,16 @@ namespace BetterBullTracker.Databases
         public KalmanErrorCollection GetKalmanErrorCollection()
         {
             return KalmanError;
+        }
+
+        public BuildingCollection GetBuildingCollection()
+        {
+            return Buildings;
+        }
+
+        public PositionCollection GetPositionCollection()
+        {
+            return Positions;
         }
     }
 
