@@ -41,6 +41,7 @@ namespace SyncromaticsAPI
             }
         }
 
+        int i = 1;
         private async void DownloadVehicles(object source, ElapsedEventArgs e)
         {
             TimeZoneInfo easternZone;
@@ -65,9 +66,10 @@ namespace SyncromaticsAPI
                     List<SyncromaticsVehicle> vehicles = await $"{BackendURL}/Route/{route.ID}/Vehicles".GetJsonAsync<List<SyncromaticsVehicle>>();
                     foreach (SyncromaticsVehicle vehicle in vehicles)
                     {
-                        MainAPI.TriggerNewVehicleDownloaded(route, vehicle);
+                        MainAPI.TriggerNewVehicleDownloaded(route, vehicle, i);
                     }
                 }
+                i++;
             }
         }
     }

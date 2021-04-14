@@ -44,10 +44,17 @@ namespace SyncromaticsAPI
             VehicleManager.Start();
         }
 
-        internal void TriggerNewVehicleDownloaded(SyncromaticsRoute route, SyncromaticsVehicle vehicle)
+        int index = 1;
+        public int getIndex()
+        {
+            return index;
+        }
+        
+        internal void TriggerNewVehicleDownloaded(SyncromaticsRoute route, SyncromaticsVehicle vehicle, int i)
         {
             if (NewVehicleDownloaded != null)
             {
+                index = i;
                 NewVehicleDownloaded.Invoke(this, new VehicleDownloadedArgs()
                 {
                     Route = route,

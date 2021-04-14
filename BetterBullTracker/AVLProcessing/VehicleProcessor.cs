@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using System.IO;
 using System.Threading;
 using SyncromaticsAPI.Events;
+using BetterBullTracker.AVLProcessing.VehicleHandling;
 
 namespace BetterBullTracker.AVLProcessing
 {
@@ -38,8 +39,10 @@ namespace BetterBullTracker.AVLProcessing
 
         public void Start()
         {
-            //AVLProcessing.Syncromatics.NewVehicleDownloaded += async (s, e) => await Syncromatics_NewVehicleDownloadedAsync(s, e);
-            //AVLProcessing.Syncromatics.Start();
+            /*
+            AVLProcessing.Syncromatics.NewVehicleDownloaded += async (s, e) => await Syncromatics_NewVehicleDownloadedAsync(s, e);
+            AVLProcessing.Syncromatics.Start();
+            */
 
             System.Timers.Timer Timer = new System.Timers.Timer(3000);
             Timer.AutoReset = true;
@@ -59,17 +62,13 @@ namespace BetterBullTracker.AVLProcessing
 
         private async Task Syncromatics_NewVehicleDownloadedAsync(object sender, SyncromaticsAPI.Events.VehicleDownloadedArgs e)
         {
-            Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
+            //Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
+
             /*
             await Database.GetPositionCollection().InsertPositionAsync(new VehiclePosition()
             {
-                RouteID = e.Route.ID,
-                VehicleID = e.Vehicle.ID,
-                VehicleName = e.Vehicle.Name,
-                RouteName = e.Route.Name,
-                Longitude = e.Vehicle.Longitude,
-                Latitude = e.Vehicle.Latitude,
-                Time = DateTime.Now.ToUniversalTime()
+                Args = e,
+                Index = AVLProcessing.Syncromatics.getIndex()
             });
             */
 
@@ -88,25 +87,18 @@ namespace BetterBullTracker.AVLProcessing
             Console.WriteLine("new vehicle " + vehicle.Name);
             VehicleState state = new VehicleState(vehicle);
             Route route = Routes[vehicle.RouteID];
-            Stop stop = SpatialMatcher.GetVehicleStop(route, state);
 
             /*
-             * if this vehicle is new, we want to make sure there's no wonkiness
-             * by only starting to track it if it has reached the 1st stop on its route,
-             * either the msc or the library.
-             */
-            //if (stop == null) return; //|| stop.StopID != route.RouteStops[0].StopID) return;
-
             TripHistory history = new TripHistory();
             history.RouteID = vehicle.RouteID;
-            //history.OriginStopID = stop.StopID;
             history.TimeLeftOrigin = DateTime.UnixEpoch;
-
             InProgressHistories.Add(vehicle.ID, history);
+            */
+
             VehicleStates.Add(vehicle.ID, state);
 
             //we have not seen this vehicle before. let's check where it is
-            //StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
+            StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
 
         }
 
@@ -117,11 +109,11 @@ namespace BetterBullTracker.AVLProcessing
         /// <returns></returns>
         private async Task HandleExistingVehicle(SyncromaticsVehicle vehicle)
         {
-            Console.WriteLine("existing vehicle " + vehicle.Name);
+            //Console.WriteLine("existing vehicle " + vehicle.Name);
             VehicleState state = VehicleStates[vehicle.ID];
             if (state.GetLatestVehicleReport().Updated.Equals(vehicle.Updated))
             {
-                Console.WriteLine("not updated!");
+                //Console.WriteLine("not updated!");
                 return; //we aren't interested in reports that haven't been updated
             }
 
@@ -135,11 +127,10 @@ namespace BetterBullTracker.AVLProcessing
             state.AddVehicleReport(vehicle);
 
             Route route = Routes[vehicle.RouteID];
-            Stop stop = SpatialMatcher.GetVehicleStop(route, state);
             StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
+            double headway = HeadwayHandler.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID, stopPath, AVLProcessing.GetWebsockets());
 
             
-            Console.WriteLine("sending message");
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, stopPath));
         }
     }

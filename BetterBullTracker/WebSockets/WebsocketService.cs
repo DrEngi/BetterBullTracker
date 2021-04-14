@@ -33,6 +33,14 @@ namespace BetterBullTracker.WebSockets
             }
         }
 
+        public async Task SendCoordMessageAsync(WSTestCoordMsg msg)
+        {
+            foreach (string client in Clients)
+            {
+                await Server.SendAsync(client, JsonConvert.SerializeObject(msg));
+            }
+        }
+
         private void Server_MessageReceived(object sender, MessageReceivedEventArgs e)
         {
             Console.WriteLine("msg: " + e.Data);

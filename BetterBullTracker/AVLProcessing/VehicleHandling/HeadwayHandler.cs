@@ -1,4 +1,7 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.Spatial;
+using BetterBullTracker.WebSockets;
+using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +11,7 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
 {
     public class HeadwayHandler
     {
-        public static double CalculateHeadwayDifference(List<VehicleState> states, Route route, int vehicleIDOfInterest)
+        public static double CalculateHeadwayDifference(List<VehicleState> states, Route route, int vehicleIDOfInterest, StopPath stopPath, WebsocketService service)
         {
             /**
              * to keep buses adequately spaced, they should be arranged 20 minutes (or less) apart.
@@ -23,18 +26,42 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
 
             if (vehicleCount == 1) return 0.0;
 
-            //TODO: see if this works, check performance
-            /**
-             * if (distance(A, C) + distance(B, C) == distance(A, B))
-             *     return true; // C is on the line.
-             * return false;    // C is not on the line.
-             *
-             *  or just:
-             *
-             *  return distance(A, C) + distance(B, C) == distance(A, B);
-             *
-             */
-            int closestWaypoint = route.RouteWaypoints.FindIndex(x => x.Coordinate.Latitude == states[vehicleIndex].GetLatestVehicleReport().Latitude || x.Coordinate.Longitude == states[vehicleIndex].GetLatestVehicleReport().Longitude);
+            VehicleState state = states.Find(x => x.ID == vehicleIDOfInterest);
+            Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
+            
+            double minimum = Double.MaxValue;
+            int closestCoord = -1;
+            for (int i = 0; i < stopPath.Path.Count; i++)
+            {
+                Coordinate coord = new Coordinate(stopPath.Path[i].Latitude, stopPath.Path[i].Longitude);
+                if (coord.DistanceTo(vehicleLocation) < minimum)
+                {
+                    minimum = coord.DistanceTo(vehicleLocation);
+                    closestCoord = i;
+                }
+            }
+
+            int nextCoordinateIndex = closestCoord == stopPath.Path.Count - 1 ? 0 : closestCoord + 1;
+            int lastCoordinateIndex = closestCoord == 0 ? stopPath.Path.Count - 1 : closestCoord - 1;
+
+            Coordinate closestCoordinate = new Coordinate(stopPath.Path[closestCoord].Latitude, stopPath.Path[closestCoord].Longitude);
+            Coordinate nextCoordinate = new Coordinate(stopPath.Path[nextCoordinateIndex].Latitude, stopPath.Path[nextCoordinateIndex].Longitude);
+            Coordinate lastCoordinate = new Coordinate(stopPath.Path[lastCoordinateIndex].Latitude, stopPath.Path[lastCoordinateIndex].Longitude);
+            Coordinate pairedCoordinate;
+
+            double distanceToLast = vehicleLocation.DistanceTo(lastCoordinate);
+            double distanceToNext = vehicleLocation.DistanceTo(nextCoordinate);
+
+            if (distanceToNext <= distanceToLast)
+            {
+                //closer to next
+                pairedCoordinate = nextCoordinate;
+            }
+            else pairedCoordinate = lastCoordinate;
+
+            service.SendCoordMessageAsync(new WSTestCoordMsg(closestCoordinate, pairedCoordinate, vehicleIDOfInterest));
+            
+
             return 0;
         }
     }

@@ -66,7 +66,6 @@ namespace BetterBullTracker.Spatial
             List<StopPath> paths = route.StopPaths;
             paths.Reverse();
             foreach(StopPath x in paths)
-            //for (int k = route.StopPaths.Count; k > -1; --k)
             {
                 for (int i = 0; i < x.Path.Count - 1; i += 2)
                 {
@@ -80,13 +79,11 @@ namespace BetterBullTracker.Spatial
                     {
                         if (secondCoord.DistanceTo(vehicleLocation) < minimum)
                         {
-                            Console.WriteLine($"setting, {firstCoord.DistanceTo(vehicleLocation)}, min was {minimum}");
                             minimum = secondCoord.DistanceTo(vehicleLocation);
                             selectedPath = x;
                         }
                         if (firstCoord.DistanceTo(vehicleLocation) < minimum)
                         {
-                            Console.WriteLine($"setting, {firstCoord.DistanceTo(vehicleLocation)}, min was {minimum}");
                             minimum = firstCoord.DistanceTo(vehicleLocation);
                             selectedPath = x;
                         }
