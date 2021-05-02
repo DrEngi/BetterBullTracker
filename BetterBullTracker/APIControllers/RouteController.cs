@@ -11,12 +11,12 @@ using Microsoft.Extensions.Logging;
 namespace BetterBullTracker.Controllers
 {
     [ApiController]
-    [Route("weather")]
-    public class WeatherForecastController : ControllerBase
+    [Route("routes")]
+    public class RouteController : ControllerBase
     {
         private AVLProcessingService Service;
         
-        public WeatherForecastController(AVLProcessingService service)
+        public RouteController(AVLProcessingService service)
         {
             Service = service;
         }

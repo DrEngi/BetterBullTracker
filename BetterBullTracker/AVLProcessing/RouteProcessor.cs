@@ -41,6 +41,28 @@ namespace BetterBullTracker.AVLProcessing
             return newRoutes;
         }
 
+        public async Task<Route> ProcessIndividualRoute(SyncromaticsRoute route)
+        {
+            Route newRoute = new Route(route);
+            newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
+            //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
+            newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
+            newRoute.StopPaths = ParseStopPaths(route.Waypoints, route.Stops);
+            newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);
+
+            double totalDistance = 0.0;
+            int stopCount = 0;
+            int wayPointCount = 0;
+            foreach (StopPath paths in newRoute.StopPaths)
+            {
+                totalDistance += paths.TotalPathDistance;
+                stopCount += 2;
+                wayPointCount += paths.Path.Count;
+            }
+
+            return newRoute;
+        }
+
         private double CalculateTotalDistance(List<SyncromaticsWaypoint> waypoints)
         {
             double totalRouteDistance = 0.0;
@@ -130,10 +152,15 @@ namespace BetterBullTracker.AVLProcessing
         private async Task<List<RouteWaypoint>> ParseWaypoints(List<SyncromaticsWaypoint> syncWaypoints)
         {
             List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
-            foreach (SyncromaticsWaypoint waypoint in syncWaypoints)
+            double distance = 0;
+            for (int i = 0; i < syncWaypoints.Count; i++)
             {
-                waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude));
+                SyncromaticsWaypoint waypoint = syncWaypoints[i];
+
+                if (i != 0) distance += new Coordinate(syncWaypoints[i - 1].Latitude, syncWaypoints[i - 1].Longitude).DistanceTo(new Coordinate(waypoint.Latitude, waypoint.Longitude));
+                waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude, distance));
             }
+            
             return waypoints;
         }
 
@@ -154,9 +181,14 @@ namespace BetterBullTracker.AVLProcessing
                 string mapboxAPI = url + coordsForMapbox + "?annotations=maxspeed&overview=full&geometries=geojson&access_token=pk.eyJ1IjoiZHJlbmdpIiwiYSI6ImNrMzY1NXl4aDAxanMzaHV0Zzlkd2pnZngifQ.L6C_jKfq5UCC5PkLRmFCbQ";
                 MatchingResponse response = await mapboxAPI.GetJsonAsync<MatchingResponse>();
 
-                foreach (List<double> coord in response.matchings[0].geometry.coordinates)
+                double distance = 0;
+                for (int i = 0; i < response.matchings[0].geometry.coordinates.Count; i++)
                 {
-                    waypoints.Add(new RouteWaypoint(coord[1], coord[0]));
+                    List<double> coord = response.matchings[0].geometry.coordinates[i];
+                    List<double> lastCoord = response.matchings[0].geometry.coordinates[i-1];
+
+                    if (i != 0) distance += new Coordinate(lastCoord[1], lastCoord[0]).DistanceTo(new Coordinate(coord[1], coord[0]));
+                    waypoints.Add(new RouteWaypoint(coord[1], coord[0], distance));
                 }
             }
 

@@ -51,10 +51,14 @@ namespace BetterBullTracker.AVLProcessing
         }
 
         int i = 1;
+        RouteProcessor processor = new RouteProcessor();
+        Dictionary<int, Route> tempRoutes = new Dictionary<int, Route>();
         private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
         {
             foreach(VehiclePosition position in await Database.GetPositionCollection().GetPositionAsync(i))
             {
+                if (!tempRoutes.ContainsKey(position.Args.Route.ID)) tempRoutes.Add(position.Args.Route.ID, await processor.ProcessIndividualRoute(position.Args.Route));
+
                 await Syncromatics_NewVehicleDownloadedAsync(this, position.Args);
             }
             i++;
@@ -62,7 +66,7 @@ namespace BetterBullTracker.AVLProcessing
 
         private async Task Syncromatics_NewVehicleDownloadedAsync(object sender, SyncromaticsAPI.Events.VehicleDownloadedArgs e)
         {
-            //Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
+            Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
 
             /*
             await Database.GetPositionCollection().InsertPositionAsync(new VehiclePosition()
@@ -86,7 +90,7 @@ namespace BetterBullTracker.AVLProcessing
         {
             Console.WriteLine("new vehicle " + vehicle.Name);
             VehicleState state = new VehicleState(vehicle);
-            Route route = Routes[vehicle.RouteID];
+            Route route = tempRoutes[vehicle.RouteID];
 
             /*
             TripHistory history = new TripHistory();
@@ -113,7 +117,6 @@ namespace BetterBullTracker.AVLProcessing
             VehicleState state = VehicleStates[vehicle.ID];
             if (state.GetLatestVehicleReport().Updated.Equals(vehicle.Updated))
             {
-                //Console.WriteLine("not updated!");
                 return; //we aren't interested in reports that haven't been updated
             }
 
@@ -126,9 +129,10 @@ namespace BetterBullTracker.AVLProcessing
             }
             state.AddVehicleReport(vehicle);
 
-            Route route = Routes[vehicle.RouteID];
+            
+            Route route = tempRoutes[vehicle.RouteID];
             StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
-            double headway = HeadwayHandler.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID, stopPath, AVLProcessing.GetWebsockets());
+            double headway = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID, stopPath, AVLProcessing.GetWebsockets());
 
             
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, stopPath));

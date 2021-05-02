@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace BetterBullTracker.AVLProcessing.VehicleHandling
 {
-    public static class BreakHandler
+    public static class BreakGenerator
     {
         /**
          * rules for determining if a vehicle is on a break or is otherwise temporarily unavailable:

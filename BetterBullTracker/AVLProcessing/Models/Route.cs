@@ -47,15 +47,18 @@ namespace BetterBullTracker.AVLProcessing.Models
     public class RouteWaypoint
     {
         public Coordinate Coordinate { get; set; }
+        public double Distance { get; set; }
 
-        public RouteWaypoint(double latitude, double longitude)
+        public RouteWaypoint(double latitude, double longitude, double distance)
         {
             Coordinate = new Coordinate(latitude, longitude);
+            Distance = distance;
         }
 
-        public RouteWaypoint(Coordinate coordinate)
+        public RouteWaypoint(Coordinate coordinate, double distance)
         {
             Coordinate = coordinate;
+            Distance = distance;
         }
     }
 

@@ -15,7 +15,7 @@ namespace BetterBullTracker.Databases
         public PositionCollection(IMongoDatabase database)
         {
             Collection = database.GetCollection<VehiclePosition>("positions2");
-            Collection2 = database.GetCollection<VehiclePosition>("positions");
+            //Collection2 = database.GetCollection<VehiclePosition>("positions");
         }
 
         public async Task InsertPositionAsync(VehiclePosition position)

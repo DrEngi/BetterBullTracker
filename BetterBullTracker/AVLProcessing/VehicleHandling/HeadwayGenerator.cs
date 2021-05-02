@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace BetterBullTracker.AVLProcessing.VehicleHandling
 {
-    public class HeadwayHandler
+    public class HeadwayGenerator
     {
         public static double CalculateHeadwayDifference(List<VehicleState> states, Route route, int vehicleIDOfInterest, StopPath stopPath, WebsocketService service)
         {
@@ -27,20 +27,22 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
             if (vehicleCount == 1) return 0.0;
 
             VehicleState state = states.Find(x => x.ID == vehicleIDOfInterest);
-            Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
-            
-            double minimum = Double.MaxValue;
-            int closestCoord = -1;
-            for (int i = 0; i < stopPath.Path.Count; i++)
+            double vehicleDistance = GetDistanceAlongShape(state, route, stopPath);
+
+            VehicleState closestVehicle;
+            double closestVehicleDistance = double.MaxValue;
+            foreach(VehicleState otherVehicle in states.Where(x => x.ID != vehicleIDOfInterest && x.RouteID == route.RouteID))
             {
-                Coordinate coord = new Coordinate(stopPath.Path[i].Latitude, stopPath.Path[i].Longitude);
-                if (coord.DistanceTo(vehicleLocation) < minimum)
+                double otherVehicleDistance = GetDistanceAlongShape(otherVehicle, route);
+                
+                if (otherVehicleDistance < closestVehicleDistance)
                 {
-                    minimum = coord.DistanceTo(vehicleLocation);
-                    closestCoord = i;
+                    closestVehicle = otherVehicle;
+                    closestVehicleDistance = otherVehicleDistance;
                 }
             }
 
+            /*
             int nextCoordinateIndex = closestCoord == stopPath.Path.Count - 1 ? 0 : closestCoord + 1;
             int lastCoordinateIndex = closestCoord == 0 ? stopPath.Path.Count - 1 : closestCoord - 1;
 
@@ -58,11 +60,35 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
                 pairedCoordinate = nextCoordinate;
             }
             else pairedCoordinate = lastCoordinate;
+            */
 
-            service.SendCoordMessageAsync(new WSTestCoordMsg(closestCoordinate, pairedCoordinate, vehicleIDOfInterest));
+            //service.SendCoordMessageAsync(new WSTestCoordMsg(closestCoordinate, closestCoordinate, vehicleIDOfInterest));
             
 
             return 0;
+        }
+
+        private static double GetDistanceAlongShape(VehicleState vehicle, Route route, StopPath stopPath = null)
+        {
+            if (stopPath == null) stopPath = SpatialMatcher.GetStopPath(route, vehicle);
+
+            Coordinate vehicleLocation = new Coordinate(vehicle.GetLatestVehicleReport().Latitude, vehicle.GetLatestVehicleReport().Longitude);
+
+            double minimum = Double.MaxValue;
+            int closestCoord = -1;
+            for (int i = 0; i < stopPath.Path.Count; i++)
+            {
+                Coordinate coord = new Coordinate(stopPath.Path[i].Latitude, stopPath.Path[i].Longitude);
+                if (coord.DistanceTo(vehicleLocation) < minimum)
+                {
+                    minimum = coord.DistanceTo(vehicleLocation);
+                    closestCoord = i;
+                }
+            }
+
+            RouteWaypoint closestWaypoint = route.RouteWaypoints.Find(x => x.Coordinate.Latitude == stopPath.Path[closestCoord].Latitude && x.Coordinate.Longitude == stopPath.Path[closestCoord].Longitude);
+
+            return closestWaypoint.Distance;
         }
     }
 }
