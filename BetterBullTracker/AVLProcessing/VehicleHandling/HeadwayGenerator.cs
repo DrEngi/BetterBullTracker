@@ -11,7 +11,7 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
 {
     public class HeadwayGenerator
     {
-        public static double CalculateHeadwayDifference(List<VehicleState> states, Route route, int vehicleIDOfInterest, StopPath stopPath, WebsocketService service)
+        public static double CalculateHeadwayDifference(List<VehicleState> states, Route route, int vehicleIDOfInterest)
         {
             /**
              * to keep buses adequately spaced, they should be arranged 20 minutes (or less) apart.
@@ -20,57 +20,31 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
              * buses should be evenly spaced, the distance they should be spaced is determined
              * by dividing the total route distance (calculated earlier) by the number of buses.
              */
-            int vehicleCount = states.Count;
-            int vehicleIndex = states.FindIndex(x => x.ID == vehicleIDOfInterest);
-            double separationDistance = route.RouteDistance / vehicleCount; //in an ideal world, how far vehicles should be separated from each other.
+            int vehicleCount = states.Where(x => x.RouteID == route.RouteID).Count();
+            double idealSeparationDistance = route.RouteDistance / vehicleCount; //in an ideal world, how far vehicles should be separated from each other.
 
             if (vehicleCount == 1) return 0.0;
 
-            VehicleState state = states.Find(x => x.ID == vehicleIDOfInterest);
-            double vehicleDistance = GetDistanceAlongShape(state, route, stopPath);
-
-            VehicleState closestVehicle;
-            double closestVehicleDistance = double.MaxValue;
-            foreach(VehicleState otherVehicle in states.Where(x => x.ID != vehicleIDOfInterest && x.RouteID == route.RouteID))
+            List<(double, VehicleState)> otherVehicles = new List<(double, VehicleState)>();
+            foreach(VehicleState otherVehicle in states.Where(x => x.RouteID == route.RouteID))
             {
-                double otherVehicleDistance = GetDistanceAlongShape(otherVehicle, route);
-                
-                if (otherVehicleDistance < closestVehicleDistance)
-                {
-                    closestVehicle = otherVehicle;
-                    closestVehicleDistance = otherVehicleDistance;
-                }
+                otherVehicles.Add((GetDistanceAlongShape(otherVehicle, route), otherVehicle));
             }
 
-            /*
-            int nextCoordinateIndex = closestCoord == stopPath.Path.Count - 1 ? 0 : closestCoord + 1;
-            int lastCoordinateIndex = closestCoord == 0 ? stopPath.Path.Count - 1 : closestCoord - 1;
+            otherVehicles.Sort((x, y) => x.Item1.CompareTo(y.Item1));
 
-            Coordinate closestCoordinate = new Coordinate(stopPath.Path[closestCoord].Latitude, stopPath.Path[closestCoord].Longitude);
-            Coordinate nextCoordinate = new Coordinate(stopPath.Path[nextCoordinateIndex].Latitude, stopPath.Path[nextCoordinateIndex].Longitude);
-            Coordinate lastCoordinate = new Coordinate(stopPath.Path[lastCoordinateIndex].Latitude, stopPath.Path[lastCoordinateIndex].Longitude);
-            Coordinate pairedCoordinate;
+            int vehicleIndex = otherVehicles.FindIndex(x => x.Item2.ID == vehicleIDOfInterest);
+            int nextIndex = vehicleIndex == otherVehicles.Count - 1 ? 0 : vehicleIndex + 1;
 
-            double distanceToLast = vehicleLocation.DistanceTo(lastCoordinate);
-            double distanceToNext = vehicleLocation.DistanceTo(nextCoordinate);
+            double separationDistance = Math.Abs(otherVehicles[vehicleIndex].Item1 - otherVehicles[nextIndex].Item1);
 
-            if (distanceToNext <= distanceToLast)
-            {
-                //closer to next
-                pairedCoordinate = nextCoordinate;
-            }
-            else pairedCoordinate = lastCoordinate;
-            */
-
-            //service.SendCoordMessageAsync(new WSTestCoordMsg(closestCoordinate, closestCoordinate, vehicleIDOfInterest));
-            
-
-            return 0;
+            return separationDistance;
         }
 
         private static double GetDistanceAlongShape(VehicleState vehicle, Route route, StopPath stopPath = null)
         {
             if (stopPath == null) stopPath = SpatialMatcher.GetStopPath(route, vehicle);
+            if (stopPath == null) return -1;
 
             Coordinate vehicleLocation = new Coordinate(vehicle.GetLatestVehicleReport().Latitude, vehicle.GetLatestVehicleReport().Longitude);
 

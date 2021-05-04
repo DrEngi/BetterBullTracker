@@ -20,6 +20,7 @@ namespace BetterBullTracker.AVLProcessing
             foreach (SyncromaticsRoute route in routes)
             {
                 Route newRoute = new Route(route);
+                route.Waypoints = SubdivideWaypoints(route.Waypoints);
                 newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
                 //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
                 newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
@@ -44,6 +45,7 @@ namespace BetterBullTracker.AVLProcessing
         public async Task<Route> ProcessIndividualRoute(SyncromaticsRoute route)
         {
             Route newRoute = new Route(route);
+            route.Waypoints = SubdivideWaypoints(route.Waypoints);
             newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
             //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
             newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
@@ -147,6 +149,73 @@ namespace BetterBullTracker.AVLProcessing
                 }
             }
             return paths;
+        }
+
+        private List<SyncromaticsWaypoint> SubdivideWaypoints(List<SyncromaticsWaypoint> syncWaypoints)
+        {
+            List<SyncromaticsWaypoint> newWaypoints = new List<SyncromaticsWaypoint>();
+            for (int i = 0; i < syncWaypoints.Count; i+=2)
+            {
+                Coordinate firstLocation = new Coordinate(syncWaypoints[i].Latitude, syncWaypoints[i].Longitude);
+
+                Coordinate secondLocation;
+                if (i == syncWaypoints.Count - 1) secondLocation = new Coordinate(syncWaypoints[0].Latitude, syncWaypoints[0].Longitude);
+                else secondLocation = new Coordinate(syncWaypoints[i + 1].Latitude, syncWaypoints[i + 1].Longitude);
+
+                double distance = firstLocation.DistanceTo(secondLocation);
+                if (distance > 20)
+                {
+                    double longDifference = firstLocation.Longitude - secondLocation.Longitude;
+                    double latDifference = firstLocation.Latitude - secondLocation.Latitude;
+                    
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i].Latitude,
+                        Longitude = syncWaypoints[i].Longitude
+                    });
+
+                    //for every 20 meters between these two waypoints, add a new one.
+                    //TODO: This messes up heading calculations... investigate
+                    double maxInterval = (int)Math.Floor(distance / 20) + 1;
+                    List<SyncromaticsWaypoint> testlist = new List<SyncromaticsWaypoint>();
+                    for (double j = 1; j < maxInterval; j++)
+                    {
+                        double newLat = secondLocation.Latitude + (latDifference * (j / maxInterval));
+                        double newLong = secondLocation.Longitude + (longDifference * (j / maxInterval));
+
+                        testlist.Add(new SyncromaticsWaypoint()
+                        {
+                            Latitude = newLat,
+                            Longitude = newLong
+                        });
+
+                    }
+                    testlist.Reverse();
+                    testlist.ForEach(x => newWaypoints.Add(x));
+
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Latitude,
+                        Longitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Longitude
+                    });
+                }
+                else
+                {
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i].Latitude,
+                        Longitude = syncWaypoints[i].Longitude
+                    });
+
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Latitude,
+                        Longitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Longitude
+                    });
+                }
+            }
+
+            return newWaypoints;
         }
 
         private async Task<List<RouteWaypoint>> ParseWaypoints(List<SyncromaticsWaypoint> syncWaypoints)

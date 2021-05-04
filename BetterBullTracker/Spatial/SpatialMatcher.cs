@@ -61,9 +61,10 @@ namespace BetterBullTracker.Spatial
             Coordinate vehicleLocation = new Coordinate(report.Latitude, report.Longitude);
 
             double minimum = Double.MaxValue;
+            double superMinimum = 100;//furthest distance in meters that a coordinate should be away from the vehicle to be located.
             StopPath selectedPath = null;
 
-            List<StopPath> paths = route.StopPaths;
+            List<StopPath> paths = route.StopPaths.ToList();
             paths.Reverse();
             foreach(StopPath x in paths)
             {
@@ -90,7 +91,23 @@ namespace BetterBullTracker.Spatial
                     }
                 }
             }
-            return selectedPath;
+
+            bool valid = false;
+            double min = Double.MaxValue;
+            if (selectedPath != null)
+            {
+                foreach (Coordinate path in selectedPath.Path)
+                {
+                    double distance = vehicleLocation.DistanceTo(path);
+                    if (distance <= superMinimum) valid = true;
+                    if (distance < min) min = distance;
+                }
+
+                if (!valid) Console.WriteLine($"No valid path was found for vehicle {state.ID}, smallest value was {min}");
+            }
+
+            if (valid) return selectedPath;
+            else return null;
         }
     }
 }

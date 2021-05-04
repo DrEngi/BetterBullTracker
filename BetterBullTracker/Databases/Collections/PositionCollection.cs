@@ -26,7 +26,10 @@ namespace BetterBullTracker.Databases
         public async Task<List<VehiclePosition>> GetPositionAsync(int i)
         {
             var filter = Builders<VehiclePosition>.Filter.Eq(x => x.Index, i);
-            List<VehiclePosition> positions = await Collection.Find(filter).ToListAsync();
+            var filter2 = Builders<VehiclePosition>.Filter.Eq(x => x.Args.Vehicle.ID, 2710);
+            var combinedFilter = Builders<VehiclePosition>.Filter.And(filter, filter2);
+
+            List<VehiclePosition> positions = await Collection.Find(combinedFilter).ToListAsync();
             return positions;
         }
     }
