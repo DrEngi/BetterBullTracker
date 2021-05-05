@@ -16,6 +16,7 @@ using System.Threading;
 using SyncromaticsAPI.Events;
 using BetterBullTracker.AVLProcessing.VehicleHandling;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace BetterBullTracker.AVLProcessing
 {
@@ -51,7 +52,7 @@ namespace BetterBullTracker.AVLProcessing
             AVLProcessing.Syncromatics.Start();
             */
 
-            System.Timers.Timer Timer = new System.Timers.Timer(1000);
+            System.Timers.Timer Timer = new System.Timers.Timer(500);
             Timer.AutoReset = true;
             Timer.Elapsed += new ElapsedEventHandler(TestTriggerAsync);
             Timer.Start();
@@ -59,10 +60,24 @@ namespace BetterBullTracker.AVLProcessing
 
         int i = 1;
         RouteProcessor processor = new RouteProcessor();
+        Dictionary<int, int> lostRoute = new System.Collections.Generic.Dictionary<int, int>();
         ConcurrentDictionary<int, Route> tempRoutes = new ConcurrentDictionary<int, Route>();
 
         private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
         {
+            /*
+            if (i > 100)
+            {
+                Console.WriteLine();
+                foreach (int key in lostRoute.Keys)
+                {
+                    
+                    Console.WriteLine($"{key}: {lostRoute[key]}");
+                }
+                Console.WriteLine();
+            }
+            */
+            
             foreach(VehiclePosition position in await Database.GetPositionCollection().GetPositionAsync(i))
             {
                 if (!tempRoutes.ContainsKey(position.Args.Route.ID))
@@ -157,14 +172,12 @@ namespace BetterBullTracker.AVLProcessing
             }
 
             Route route = tempRoutes[vehicle.RouteID];
-            StopPath stopPath = SpatialMatcher.GetStopPath(route, state); //fails at MSC due to nonsense - prob need to increase range
+            state.CurrentStopPath = SpatialMatcher.GetStopPath(route, state);
             
             double test;
-            if (stopPath != null) test = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
-
-            SpatialMatcher.IsAtMSC(state);
+            if (state.CurrentStopPath != null) test = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
             
-            if (stopPath == null)
+            if (state.CurrentStopPath == null)
             {
                 bool msc = SpatialMatcher.IsAtMSC(state);
 
@@ -173,13 +186,16 @@ namespace BetterBullTracker.AVLProcessing
                 {
                     Console.WriteLine($"Vehicle {vehicle.ID} not within route {route.RouteLetter}?");
                     state.OnRoute = false;
+
+                    if (lostRoute.ContainsKey(vehicle.ID)) lostRoute[vehicle.ID] = lostRoute[vehicle.ID] + 1;
+                    else lostRoute.Add(vehicle.ID, 1);
                 }
                 
             }
-            else if (stopPath != null && !state.OnRoute) state.OnRoute = true;
+            else if (state.CurrentStopPath != null && !state.OnRoute) state.OnRoute = true;
             
             
-            await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, stopPath, route));
+            await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, state.CurrentStopPath, route));
         }
     }
 }

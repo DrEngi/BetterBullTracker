@@ -20,13 +20,13 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
              * buses should be evenly spaced, the distance they should be spaced is determined
              * by dividing the total route distance (calculated earlier) by the number of buses.
              */
-            int vehicleCount = states.Where(x => x.RouteID == route.RouteID).Count();
+            int vehicleCount = states.Where(x => x.RouteID == route.RouteID && x.CurrentStopPath != null).Count();
             double idealSeparationDistance = route.RouteDistance / vehicleCount; //in an ideal world, how far vehicles should be separated from each other.
 
             if (vehicleCount == 1) return 0.0;
 
             List<(double, VehicleState)> otherVehicles = new List<(double, VehicleState)>();
-            foreach(VehicleState otherVehicle in states.Where(x => x.RouteID == route.RouteID))
+            foreach(VehicleState otherVehicle in states.Where(x => x.RouteID == route.RouteID && x.CurrentStopPath != null))
             {
                 otherVehicles.Add((GetDistanceAlongShape(otherVehicle, route), otherVehicle));
             }
@@ -41,18 +41,15 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
             return separationDistance;
         }
 
-        private static double GetDistanceAlongShape(VehicleState vehicle, Route route, StopPath stopPath = null)
+        private static double GetDistanceAlongShape(VehicleState vehicle, Route route)
         {
-            if (stopPath == null) stopPath = SpatialMatcher.GetStopPath(route, vehicle);
-            if (stopPath == null) return -1;
-
             Coordinate vehicleLocation = new Coordinate(vehicle.GetLatestVehicleReport().Latitude, vehicle.GetLatestVehicleReport().Longitude);
 
             double minimum = Double.MaxValue;
             int closestCoord = -1;
-            for (int i = 0; i < stopPath.Path.Count; i++)
+            for (int i = 0; i < vehicle.CurrentStopPath.Path.Count; i++)
             {
-                Coordinate coord = new Coordinate(stopPath.Path[i].Latitude, stopPath.Path[i].Longitude);
+                Coordinate coord = new Coordinate(vehicle.CurrentStopPath.Path[i].Latitude, vehicle.CurrentStopPath.Path[i].Longitude);
                 if (coord.DistanceTo(vehicleLocation) < minimum)
                 {
                     minimum = coord.DistanceTo(vehicleLocation);
@@ -60,7 +57,10 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
                 }
             }
 
-            RouteWaypoint closestWaypoint = route.RouteWaypoints.Find(x => x.Coordinate.Latitude == stopPath.Path[closestCoord].Latitude && x.Coordinate.Longitude == stopPath.Path[closestCoord].Longitude);
+            RouteWaypoint closestWaypoint = route.RouteWaypoints.Find(x => 
+                x.Coordinate.Latitude == vehicle.CurrentStopPath.Path[closestCoord].Latitude && 
+                x.Coordinate.Longitude == vehicle.CurrentStopPath.Path[closestCoord].Longitude
+            );
 
             return closestWaypoint.Distance;
         }

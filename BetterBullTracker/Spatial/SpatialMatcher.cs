@@ -13,11 +13,13 @@ namespace BetterBullTracker.Spatial
     public static class SpatialMatcher
     {
         /// <summary>
-        /// Returns the stop this vehicle is at if it is within 5 meters. If none, return null
+        /// Returns the stop this vehicle is at if it is within 5 meters. If none, return null.
+        /// OBSOLETE: Use GetStopPath() for more accurate tracking
         /// </summary>
         /// <param name="route">The Route this vehicle is on</param>
         /// <param name="state">The latest VehicleState for this vehicle.</param>
         /// <returns>the Stop this vehicle is at, or null if not at one.</returns>
+        [Obsolete("Use GetStopPath() instead")]
         public static Stop GetVehicleStop(Route route, VehicleState state)
         {
             /*
@@ -65,6 +67,17 @@ namespace BetterBullTracker.Spatial
 
             return vehicleLocation.DistanceTo(mscCircleLocation) <= maxDistance;
         }
+
+        /// <summary>
+        /// you probably know what this does
+        /// </summary>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public static bool IsAtLaurel(VehicleState state)
+        {
+
+        }
+
 
         public static StopPath GetStopPath(Route route, VehicleState state)
         {
