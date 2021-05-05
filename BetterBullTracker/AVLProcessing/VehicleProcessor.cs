@@ -162,10 +162,19 @@ namespace BetterBullTracker.AVLProcessing
             double test;
             if (stopPath != null) test = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
 
+            SpatialMatcher.IsAtMSC(state);
+            
             if (stopPath == null)
             {
-                Console.WriteLine($"Vehicle {vehicle.ID} not within route {route.RouteLetter}?");
-                state.OnRoute = false;
+                bool msc = SpatialMatcher.IsAtMSC(state);
+
+                if (msc) Console.WriteLine($"Vehicle {vehicle.ID} is at MSC on route {route.RouteLetter}?");
+                else
+                {
+                    Console.WriteLine($"Vehicle {vehicle.ID} not within route {route.RouteLetter}?");
+                    state.OnRoute = false;
+                }
+                
             }
             else if (stopPath != null && !state.OnRoute) state.OnRoute = true;
             

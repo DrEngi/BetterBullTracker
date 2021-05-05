@@ -175,7 +175,6 @@ namespace BetterBullTracker.AVLProcessing
                     });
 
                     //for every 20 meters between these two waypoints, add a new one.
-                    //TODO: This messes up heading calculations... investigate
                     double maxInterval = (int)Math.Floor(distance / 20) + 1;
                     List<SyncromaticsWaypoint> testlist = new List<SyncromaticsWaypoint>();
                     for (double j = 1; j < maxInterval; j++)
@@ -190,6 +189,7 @@ namespace BetterBullTracker.AVLProcessing
                         });
 
                     }
+                    //reverse() required because otherwise stoppath calculation breaks due to reversed headings.
                     testlist.Reverse();
                     testlist.ForEach(x => newWaypoints.Add(x));
 
@@ -206,6 +206,8 @@ namespace BetterBullTracker.AVLProcessing
                         Latitude = syncWaypoints[i].Latitude,
                         Longitude = syncWaypoints[i].Longitude
                     });
+
+                    //adding the last element again can sometimes cause a weird path (e.g. on route c at MSC) because it goes the wrong direction.
 
                     newWaypoints.Add(new SyncromaticsWaypoint()
                     {

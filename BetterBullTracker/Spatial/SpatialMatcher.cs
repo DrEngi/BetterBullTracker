@@ -55,6 +55,17 @@ namespace BetterBullTracker.Spatial
             return null;
         }
 
+        public static bool IsAtMSC(VehicleState state)
+        {
+            Coordinate mscCircleLocation = new Coordinate(28.064380, -82.413931); //the (rough) location of the center of the MSC circle
+            double maxDistance = 22; //the max distance from the center of the MSC circle buses can be in order to be considered "at" the msc
+
+            SyncromaticsVehicle report = state.GetLatestVehicleReport();
+            Coordinate vehicleLocation = new Coordinate(report.Latitude, report.Longitude);
+
+            return vehicleLocation.DistanceTo(mscCircleLocation) <= maxDistance;
+        }
+
         public static StopPath GetStopPath(Route route, VehicleState state)
         {
             SyncromaticsVehicle report = state.GetLatestVehicleReport();
