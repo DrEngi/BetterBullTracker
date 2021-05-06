@@ -52,7 +52,7 @@ namespace BetterBullTracker.AVLProcessing
             AVLProcessing.Syncromatics.Start();
             */
 
-            System.Timers.Timer Timer = new System.Timers.Timer(500);
+            System.Timers.Timer Timer = new System.Timers.Timer(1000);
             Timer.AutoReset = true;
             Timer.Elapsed += new ElapsedEventHandler(TestTriggerAsync);
             Timer.Start();
@@ -60,24 +60,10 @@ namespace BetterBullTracker.AVLProcessing
 
         int i = 1;
         RouteProcessor processor = new RouteProcessor();
-        Dictionary<int, int> lostRoute = new System.Collections.Generic.Dictionary<int, int>();
         ConcurrentDictionary<int, Route> tempRoutes = new ConcurrentDictionary<int, Route>();
 
         private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
         {
-            /*
-            if (i > 100)
-            {
-                Console.WriteLine();
-                foreach (int key in lostRoute.Keys)
-                {
-                    
-                    Console.WriteLine($"{key}: {lostRoute[key]}");
-                }
-                Console.WriteLine();
-            }
-            */
-            
             foreach(VehiclePosition position in await Database.GetPositionCollection().GetPositionAsync(i))
             {
                 if (!tempRoutes.ContainsKey(position.Args.Route.ID))
@@ -179,21 +165,16 @@ namespace BetterBullTracker.AVLProcessing
             
             if (state.CurrentStopPath == null)
             {
-                bool msc = SpatialMatcher.IsAtMSC(state);
-
-                if (msc) Console.WriteLine($"Vehicle {vehicle.ID} is at MSC on route {route.RouteLetter}?");
+                if (SpatialMatcher.IsAtMSC(state)) Console.WriteLine($"Vehicle {vehicle.ID} is at MSC on route {route.RouteLetter}?");
+                else if (route.RouteStops.Count(x => x.StopID == 95569) == 0 && SpatialMatcher.IsAtLaurel(state)) Console.WriteLine($"Vehicle {vehicle.ID} is at laurel on route {route.RouteLetter}?");
                 else
                 {
                     Console.WriteLine($"Vehicle {vehicle.ID} not within route {route.RouteLetter}?");
                     state.OnRoute = false;
-
-                    if (lostRoute.ContainsKey(vehicle.ID)) lostRoute[vehicle.ID] = lostRoute[vehicle.ID] + 1;
-                    else lostRoute.Add(vehicle.ID, 1);
                 }
                 
             }
             else if (state.CurrentStopPath != null && !state.OnRoute) state.OnRoute = true;
-            
             
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, state.CurrentStopPath, route));
         }

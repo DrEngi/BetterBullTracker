@@ -19,7 +19,7 @@ namespace BetterBullTracker.Databases
             Collection = database.GetCollection<VehiclePosition>("positions2");
             //Collection2 = database.GetCollection<VehiclePosition>("positions");
 
-            List<VehiclePosition> pos = Collection.Find(x => x.Index <= 100).ToList();
+            List<VehiclePosition> pos = Collection.Find(x => x.Index <= 600).ToList();
             pos.ForEach(x =>
             {
                 if (AllPositions.ContainsKey(x.Index)) AllPositions[x.Index].Add(x);
@@ -34,7 +34,7 @@ namespace BetterBullTracker.Databases
 
         public async Task<List<VehiclePosition>> GetPositionAsync(int i)
         {
-            return AllPositions[i];
+            return AllPositions[i].Where(x => x.Args.Vehicle.ID == 1786).ToList();
             
             /*
             

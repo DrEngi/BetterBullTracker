@@ -75,7 +75,47 @@ namespace BetterBullTracker.Spatial
         /// <returns></returns>
         public static bool IsAtLaurel(VehicleState state)
         {
+            List<Coordinate> LaurelCoords = new List<Coordinate>()
+            {
+                new Coordinate(28.066435,-82.418948),
+                new Coordinate(28.066812,-82.418957),
+                new Coordinate(28.06722,-82.418969),
+                new Coordinate(28.067323,-82.41898),
+                new Coordinate(28.067322,-82.41893),
+                new Coordinate(28.06732, -82.418185),
+                new Coordinate(28.067331, -82.418083),
+                new Coordinate(28.067369, -82.417989),
+                new Coordinate(28.067407, -82.417939),
+                new Coordinate(28.067443, -82.417914),
+                new Coordinate(28.067388, -82.41784),
+                new Coordinate(28.067281, -82.417708),
+                new Coordinate(28.067209, -82.417668),
+                new Coordinate(28.06713, -82.417655),
+                new Coordinate(28.067004, -82.417653),
+                new Coordinate(28.066856, -82.41765),
+                new Coordinate(28.066742, -82.417666),
+                new Coordinate(28.06663, -82.417677),
+                new Coordinate(28.066486, -82.417679),
+                new Coordinate(28.066367, -82.41768),
+                new Coordinate(28.06626, -82.417681),
+                new Coordinate(28.066105, -82.417681),
+                new Coordinate(28.065999, -82.417683),
+                new Coordinate(28.065925, -82.417636),
+                new Coordinate(28.065877, -82.417606)
+            };
 
+            Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
+
+            double min = Double.MaxValue;
+            foreach(Coordinate coord in LaurelCoords)
+            {
+                double distance = vehicleLocation.DistanceTo(coord);
+                if (distance <= min) min = distance;
+                if (distance <= 20) return true;
+            }
+            Console.WriteLine("min distance for laurel: " + min);
+
+            return false;
         }
 
 
@@ -90,15 +130,51 @@ namespace BetterBullTracker.Spatial
 
             List<StopPath> paths = route.StopPaths.ToList();
             paths.Reverse();
-            foreach(StopPath x in paths)
+            for (int i = 0; i < paths.Count; i++)
             {
-                for (int i = 0; i < x.Path.Count - 1; i += 2)
+                StopPath x = paths[i];
+                StopPath x2 = paths[i == paths.Count - 1 ? 0 : i + 1];
+
+                Coordinate firstPathLastCoord = x.Path[x.Path.Count - 1];
+                Coordinate secondPathFirstCoord = x2.Path[0];
+
+                string pathDirection = Coordinate.DegreesToCardinal(firstPathLastCoord.GetBearingTo(secondPathFirstCoord));
+
+                /**
+                 * based on the direction of this segment, we're going to generate a "no-pass" latitude or longitude
+                 * that will prevent vehicles from being moved to the next coordinate or stoppath when they haven't already passed it,
+                 * even if it's technically closer.
+                 * 
+                 * north or south: latitude.
+                 * east or west: longitude.
+                 * 
+                 * mixed-direction: eh?
+                 */
+
+                double noPassLat = 0;
+                double noPassLong = 0;
+                if (pathDirection == "N" || pathDirection == "S")
                 {
-                    Coordinate firstCoord = new Coordinate(x.Path[i].Latitude, x.Path[i].Longitude);
-                    Coordinate secondCoord = new Coordinate(x.Path[i + 1].Latitude, x.Path[i + 1].Longitude);
+                    noPassLat = secondPathFirstCoord.Latitude;
+                }
+                else if (pathDirection == "E" || pathDirection == "W")
+                {
+                    noPassLong = secondPathFirstCoord.Longitude;
+                }
+                else
+                {
+                    Console.WriteLine("Error: unsupported direction, help!");
+                }
+
+                for (int j = 0; j < x.Path.Count - 1; j += 2)
+                {
+                    Coordinate firstCoord = new Coordinate(x.Path[j].Latitude, x.Path[j].Longitude);
+                    Coordinate secondCoord = new Coordinate(x.Path[j + 1].Latitude, x.Path[j + 1].Longitude);
 
                     double bearing = firstCoord.GetBearingTo(secondCoord);
                     string direction = Coordinate.DegreesToCardinal(bearing);
+
+                    //TODO: Check value of noPassLat / noPassLong here.
 
                     if (direction.Equals(report.Heading))
                     {

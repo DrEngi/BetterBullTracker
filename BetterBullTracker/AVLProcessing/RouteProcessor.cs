@@ -207,7 +207,7 @@ namespace BetterBullTracker.AVLProcessing
                         Longitude = syncWaypoints[i].Longitude
                     });
 
-                    //adding the last element again can sometimes cause a weird path (e.g. on route c at MSC) because it goes the wrong direction.
+                    //TODO: adding the last element again can sometimes cause a weird path (e.g. on route c at MSC) because it goes the wrong direction.
 
                     newWaypoints.Add(new SyncromaticsWaypoint()
                     {
@@ -282,26 +282,6 @@ namespace BetterBullTracker.AVLProcessing
 
                 //calculate stop paths
                 int firstWaypointIndex = waypoints.FindIndex(x => x.Latitude == stop.Latitude && x.Longitude == stop.Longitude);
-                if (i != syncromaticsStops.Count - 1)
-                {
-                    int lastWayPointIndex = waypoints.FindIndex(x => x.Latitude == syncromaticsStops[i + 1].Latitude && x.Longitude == syncromaticsStops[i + 1].Longitude);
-                    List<Coordinate> coordinates = new List<Coordinate>();
-
-                    for (int j = firstWaypointIndex; j < lastWayPointIndex + 1; j++)
-                    {
-                        coordinates.Add(new Coordinate(waypoints[j].Latitude, waypoints[j].Longitude));
-                    }
-
-                    StopPath path = new StopPath()
-                    {
-                        OriginStopID = stop.ID,
-                        DestinationStopID = syncromaticsStops[i + 1].ID,
-                        Path = coordinates
-                    };
-                }
-                
-
-                //this block of code is responsible for determining from which direction buses would approach this stop
                 if (firstWaypointIndex != -1)
                 {
                     SyncromaticsWaypoint waypoint = waypoints[firstWaypointIndex];
