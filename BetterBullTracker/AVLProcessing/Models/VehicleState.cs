@@ -23,6 +23,8 @@ namespace BetterBullTracker.AVLProcessing.Models
         public bool OnRoute;
         public StopPath CurrentStopPath = null;
 
+        public int LostReportCounts = 0;
+
         private List<SyncromaticsVehicle> VehicleReports;
 
         public VehicleState(SyncromaticsVehicle vehicleReport)

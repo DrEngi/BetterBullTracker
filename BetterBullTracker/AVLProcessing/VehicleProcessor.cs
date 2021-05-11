@@ -137,7 +137,6 @@ namespace BetterBullTracker.AVLProcessing
         /// <returns></returns>
         private async Task HandleExistingVehicle(SyncromaticsVehicle vehicle)
         {
-            //Console.WriteLine("existing vehicle " + vehicle.Name);
             VehicleState state = VehicleStates[vehicle.ID];
             if (state.GetLatestVehicleReport().Updated.Equals(vehicle.Updated)) return; //we aren't interested in reports that haven't been updated
 
@@ -160,21 +159,17 @@ namespace BetterBullTracker.AVLProcessing
             Route route = tempRoutes[vehicle.RouteID];
             state.CurrentStopPath = SpatialMatcher.GetStopPath(route, state);
             
-            double test;
-            if (state.CurrentStopPath != null) test = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
-            
             if (state.CurrentStopPath == null)
             {
-                if (SpatialMatcher.IsAtMSC(state)) Console.WriteLine($"Vehicle {vehicle.ID} is at MSC on route {route.RouteLetter}?");
-                else if (route.RouteStops.Count(x => x.StopID == 95569) == 0 && SpatialMatcher.IsAtLaurel(state)) Console.WriteLine($"Vehicle {vehicle.ID} is at laurel on route {route.RouteLetter}?");
-                else
-                {
-                    Console.WriteLine($"Vehicle {vehicle.ID} not within route {route.RouteLetter}?");
-                    state.OnRoute = false;
-                }
-                
+                state.OnRoute = false;
             }
-            else if (state.CurrentStopPath != null && !state.OnRoute) state.OnRoute = true;
+            else if (state.CurrentStopPath != null)
+            {
+                state.OnRoute = true;
+
+                double headway = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
+                bool isOnBreak = BreakGenerator.IsOnBreak(state, route);
+            }
             
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, state.CurrentStopPath, route));
         }

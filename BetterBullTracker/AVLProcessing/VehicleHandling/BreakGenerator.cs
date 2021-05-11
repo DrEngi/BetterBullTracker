@@ -1,4 +1,6 @@
-﻿using System;
+﻿using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.Spatial;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,5 +25,17 @@ namespace BetterBullTracker.AVLProcessing.VehicleHandling
          * dwell time is not considered here, although it is often that drivers will stop in these places to recover headway or for other reasons.
          * (in my own experience, drivers usually stop at the proper stop locations to recover headway, but the NEC (and actually all of B) might be a problem in particular)
         **/
+
+        public static bool IsOnBreak(VehicleState state, Route route)
+        {
+            bool isAtMSC = false;
+            bool isAtLaurel = false;
+            bool isAtBase = false;
+
+            if (route.RouteStops.Count(x => x.StopID == 95569) == 0 && SpatialMatcher.IsAtLaurel(state)) isAtLaurel = true;
+            if (route.RouteStops.Count(x => x.RTPI == 401) == 0 && SpatialMatcher.IsAtMSC(state)) isAtMSC = true;
+
+            return isAtMSC || isAtLaurel || isAtBase;
+        }
     }
 }

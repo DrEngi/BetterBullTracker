@@ -129,42 +129,10 @@ namespace BetterBullTracker.Spatial
             StopPath selectedPath = null;
 
             List<StopPath> paths = route.StopPaths.ToList();
-            paths.Reverse();
+            //paths.Reverse();
             for (int i = 0; i < paths.Count; i++)
             {
                 StopPath x = paths[i];
-                StopPath x2 = paths[i == paths.Count - 1 ? 0 : i + 1];
-
-                Coordinate firstPathLastCoord = x.Path[x.Path.Count - 1];
-                Coordinate secondPathFirstCoord = x2.Path[0];
-
-                string pathDirection = Coordinate.DegreesToCardinal(firstPathLastCoord.GetBearingTo(secondPathFirstCoord));
-
-                /**
-                 * based on the direction of this segment, we're going to generate a "no-pass" latitude or longitude
-                 * that will prevent vehicles from being moved to the next coordinate or stoppath when they haven't already passed it,
-                 * even if it's technically closer.
-                 * 
-                 * north or south: latitude.
-                 * east or west: longitude.
-                 * 
-                 * mixed-direction: eh?
-                 */
-
-                double noPassLat = 0;
-                double noPassLong = 0;
-                if (pathDirection == "N" || pathDirection == "S")
-                {
-                    noPassLat = secondPathFirstCoord.Latitude;
-                }
-                else if (pathDirection == "E" || pathDirection == "W")
-                {
-                    noPassLong = secondPathFirstCoord.Longitude;
-                }
-                else
-                {
-                    Console.WriteLine("Error: unsupported direction, help!");
-                }
 
                 for (int j = 0; j < x.Path.Count - 1; j += 2)
                 {
@@ -174,10 +142,9 @@ namespace BetterBullTracker.Spatial
                     double bearing = firstCoord.GetBearingTo(secondCoord);
                     string direction = Coordinate.DegreesToCardinal(bearing);
 
-                    //TODO: Check value of noPassLat / noPassLong here.
-
                     if (direction.Equals(report.Heading))
                     {
+                        
                         if (secondCoord.DistanceTo(vehicleLocation) < minimum)
                         {
                             minimum = secondCoord.DistanceTo(vehicleLocation);
