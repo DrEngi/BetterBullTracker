@@ -1,4 +1,5 @@
 ﻿using BetterBullTracker.Spatial;
+using Newtonsoft.Json;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
@@ -31,6 +32,8 @@ namespace BetterBullTracker.AVLProcessing.Models
             MapboxMatchedWaypoints = new List<RouteWaypoint>();
             StopPaths = new List<StopPath>();
             RouteStops = new List<Stop>();
+
+
         }
 
         public Stop GetStopByIndex(int index)
@@ -75,7 +78,7 @@ namespace BetterBullTracker.AVLProcessing.Models
         {
             Coordinate = coordinate;
             StopID = stop.ID;
-            StopName = stop.Name.Split("-")[1].Trim();
+            StopName = stop.Name.Contains("-") ? stop.Name.Split("-")[1].Trim() : stop.Name.Trim();
             Direction = direction;
             RTPI = stop.RtpiNumber;
         }

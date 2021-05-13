@@ -36,7 +36,10 @@ namespace BetterBullTracker.AVLProcessing
         {
             AVLProcessing = service;
             Database = service.GetDatabase();
-            Routes = new ConcurrentDictionary<int, Route>(routes);
+
+            RouteProcessor processor = new RouteProcessor();
+            List<SyncromaticsRoute> syncRoutes = Database.GetHistoricalCollections().GetRoutes().Result;
+            Routes = new ConcurrentDictionary<int, Route>(processor.ProcessRoutes(syncRoutes).Result);
 
             VehicleStates = new ConcurrentDictionary<int, VehicleState>();
             InProgressHistories = new ConcurrentDictionary<int, TripHistory>();
@@ -52,41 +55,43 @@ namespace BetterBullTracker.AVLProcessing
             AVLProcessing.Syncromatics.Start();
             */
 
-            System.Timers.Timer Timer = new System.Timers.Timer(1000);
+            System.Timers.Timer Timer = new System.Timers.Timer(500);
             Timer.AutoReset = true;
             Timer.Elapsed += new ElapsedEventHandler(TestTriggerAsync);
             Timer.Start();
         }
 
-        int i = 1;
-        RouteProcessor processor = new RouteProcessor();
-        ConcurrentDictionary<int, Route> tempRoutes = new ConcurrentDictionary<int, Route>();
+        //history downloader started at this index for some reason
+        int i = 157;
+        int failedMatches = 0;
 
         private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
         {
-            foreach(VehiclePosition position in await Database.GetPositionCollection().GetPositionAsync(i))
+            if (i == 1000)
             {
-                if (!tempRoutes.ContainsKey(position.Args.Route.ID))
+                Console.WriteLine(failedMatches);
+            }
+            
+            if (Database.GetHistoricalCollections().HasIndex(i))
+            {
+                foreach (VehiclePosition position in await Database.GetHistoricalCollections().GetPositionAsync(i))
                 {
-                    Route route = await processor.ProcessIndividualRoute(position.Args.Route);
-                    tempRoutes.TryAdd(position.Args.Route.ID, route);
-                }
-
-                if (!VehicleProcessingQueues.ContainsKey(position.Args.Vehicle.ID))
-                {
-                    bool result = VehicleProcessingQueues.TryAdd(position.Args.Vehicle.ID, new BlockingCollection<SyncromaticsVehicle>());
-                    
-                    if (result)
+                    if (!VehicleProcessingQueues.ContainsKey(position.Vehicle.ID))
                     {
-                        Task task = new Task(() => HandleVehicle(position.Args.Vehicle.ID));
-                        VehicleWorkers.Add(task);
-                        task.Start();
-                    }
-                }
+                        bool result = VehicleProcessingQueues.TryAdd(position.Vehicle.ID, new BlockingCollection<SyncromaticsVehicle>());
 
-                VehicleProcessingQueues[position.Args.Vehicle.ID].Add(position.Args.Vehicle);
-                
-                //await Syncromatics_NewVehicleDownloadedAsync(this, position.Args);
+                        if (result)
+                        {
+                            Task task = new Task(() => HandleVehicle(position.Vehicle.ID));
+                            VehicleWorkers.Add(task);
+                            task.Start();
+                        }
+                    }
+
+                    VehicleProcessingQueues[position.Vehicle.ID].Add(position.Vehicle);
+
+                    //await Syncromatics_NewVehicleDownloadedAsync(this, position.Args);
+                }
             }
             i++;
         }
@@ -113,7 +118,7 @@ namespace BetterBullTracker.AVLProcessing
         {
             Console.WriteLine("new vehicle " + vehicle.Name);
             VehicleState state = new VehicleState(vehicle);
-            Route route = tempRoutes[vehicle.RouteID];
+            Route route = Routes[vehicle.RouteID];
 
             /*
             TripHistory history = new TripHistory();
@@ -150,18 +155,42 @@ namespace BetterBullTracker.AVLProcessing
             }
             state.AddVehicleReport(vehicle);
 
-            if (!tempRoutes.ContainsKey(vehicle.RouteID))
+            Route route = Routes[vehicle.RouteID];
+
+            foreach(StopPath path in route.StopPaths)
             {
-                Console.WriteLine($"Route not yet processed: {vehicle.RouteID}");
-                return;
+                for (int i = 0; i < path.Path.Count - 2; i+=2)
+                {
+                    double bearing = path.Path[i].GetBearingTo(path.Path[i+1]);
+
+                    Console.Write("{\"type\": \"Feature\",\"properties\": { },\"geometry\": {\"type\": \"Polygon\",\"coordinates\":[[ ");
+                    
+                    Coordinate newCoord = path.Path[i].AddDistanceAtBearing(2.5, bearing + 90);
+                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
+
+                    newCoord = path.Path[i].AddDistanceAtBearing(3, bearing - 90);
+                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
+
+                    newCoord = path.Path[i + 1].AddDistanceAtBearing(3, bearing - 90);
+                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
+
+                    newCoord = path.Path[i + 1].AddDistanceAtBearing(2.5, bearing + 90);
+                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
+
+
+
+                    newCoord = path.Path[i].AddDistanceAtBearing(2.5, bearing + 90);
+                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}]]]}}}},");
+                }
             }
 
-            Route route = tempRoutes[vehicle.RouteID];
             state.CurrentStopPath = SpatialMatcher.GetStopPath(route, state);
             
             if (state.CurrentStopPath == null)
             {
+                Console.WriteLine("Cannot match to stop path!");
                 state.OnRoute = false;
+                failedMatches++;
             }
             else if (state.CurrentStopPath != null)
             {
@@ -170,7 +199,7 @@ namespace BetterBullTracker.AVLProcessing
                 double headway = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
                 bool isOnBreak = BreakGenerator.IsOnBreak(state, route);
             }
-            
+
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, state.CurrentStopPath, route));
         }
     }

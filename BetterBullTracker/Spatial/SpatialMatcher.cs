@@ -2,6 +2,7 @@
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -113,11 +114,10 @@ namespace BetterBullTracker.Spatial
                 if (distance <= min) min = distance;
                 if (distance <= 20) return true;
             }
-            Console.WriteLine("min distance for laurel: " + min);
+            //Console.WriteLine("min distance for laurel: " + min);
 
             return false;
         }
-
 
         public static StopPath GetStopPath(Route route, VehicleState state)
         {
@@ -129,7 +129,6 @@ namespace BetterBullTracker.Spatial
             StopPath selectedPath = null;
 
             List<StopPath> paths = route.StopPaths.ToList();
-            //paths.Reverse();
             for (int i = 0; i < paths.Count; i++)
             {
                 StopPath x = paths[i];
@@ -177,4 +176,6 @@ namespace BetterBullTracker.Spatial
             else return null;
         }
     }
+
+    
 }

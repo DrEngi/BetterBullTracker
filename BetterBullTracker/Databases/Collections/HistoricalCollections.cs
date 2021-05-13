@@ -1,5 +1,7 @@
 ﻿using BetterBullTracker.Databases.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,19 +9,19 @@ using System.Threading.Tasks;
 
 namespace BetterBullTracker.Databases
 {
-    public class PositionCollection
+    public class HistoricalCollections
     {
-        private IMongoCollection<VehiclePosition> Collection;
-        private IMongoCollection<VehiclePosition> Collection2;
+        private IMongoCollection<VehiclePosition> VehiclesCollection;
+        private IMongoCollection<SyncromaticsRoute> RoutesCollection;
 
         Dictionary<int, List<VehiclePosition>> AllPositions = new Dictionary<int, List<VehiclePosition>>();
 
-        public PositionCollection(IMongoDatabase database)
+        public HistoricalCollections(IMongoDatabase database)
         {
-            Collection = database.GetCollection<VehiclePosition>("positions2");
-            //Collection2 = database.GetCollection<VehiclePosition>("positions");
+            VehiclesCollection = database.GetCollection<VehiclePosition>("vehicles");
+            RoutesCollection = database.GetCollection<SyncromaticsRoute>("routes");
 
-            List<VehiclePosition> pos = Collection.Find(x => x.Index <= 600).ToList();
+            List<VehiclePosition> pos = VehiclesCollection.Find(x => x.Index <= 1000).ToList();
             pos.ForEach(x =>
             {
                 if (AllPositions.ContainsKey(x.Index)) AllPositions[x.Index].Add(x);
@@ -27,14 +29,14 @@ namespace BetterBullTracker.Databases
             });
         }
 
-        public async Task InsertPositionAsync(VehiclePosition position)
+        public bool HasIndex(int i)
         {
-            await Collection.InsertOneAsync(position);
+            return AllPositions.ContainsKey(i);
         }
 
         public async Task<List<VehiclePosition>> GetPositionAsync(int i)
         {
-            return AllPositions[i].Where(x => x.Args.Vehicle.ID == 1786).ToList();
+            return AllPositions[i].Where(x=> x.Vehicle.Name == "1327").ToList();
             
             /*
             
@@ -46,6 +48,11 @@ namespace BetterBullTracker.Databases
             return positions;
 
             */
+        }
+
+        public async Task<List<SyncromaticsRoute>> GetRoutes()
+        {
+            return await RoutesCollection.Find(x => true).Project<SyncromaticsRoute>("{_id: 0}").ToListAsync();
         }
     }
 }

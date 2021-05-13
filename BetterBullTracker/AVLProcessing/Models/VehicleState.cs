@@ -25,7 +25,7 @@ namespace BetterBullTracker.AVLProcessing.Models
 
         public int LostReportCounts = 0;
 
-        private List<SyncromaticsVehicle> VehicleReports;
+        public List<SyncromaticsVehicle> VehicleReports;
 
         public VehicleState(SyncromaticsVehicle vehicleReport)
         {

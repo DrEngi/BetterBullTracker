@@ -42,6 +42,24 @@ namespace BetterBullTracker.Spatial
             return ToBearing(Math.Atan2(dLon, dPhi));
         }
 
+        public Coordinate AddDistanceAtBearing(double distance, double heading)
+        {
+            distance /= 6378000;
+            heading = ToRad(heading);
+            double fromLat = ToRad(this.Latitude);
+            double fromLng = ToRad(this.Longitude);
+            double cosDistance = Math.Cos(distance);
+            double sinDistance = Math.Sin(distance);
+            double sinFromLat = Math.Sin(fromLat);
+            double cosFromLat = Math.Cos(fromLat);
+            double sinLat = cosDistance * sinFromLat + sinDistance * cosFromLat * Math.Cos(heading);
+            double dLng = Math.Atan2(
+                    sinDistance * cosFromLat * Math.Sin(heading),
+                    cosDistance - sinFromLat * sinLat);
+
+            return new Coordinate(Coordinate.ToDegrees(Math.Asin(sinLat)), Coordinate.ToDegrees(fromLng + dLng));
+        }
+
         private static double ToRad(double degrees)
         {
             return degrees * (Math.PI / 180);
@@ -62,6 +80,31 @@ namespace BetterBullTracker.Spatial
         {
             string[] caridnals = { "N", "NE", "E", "SE", "S", "SW", "W", "NW", "N" };
             return caridnals[(int)Math.Round(((double)degrees % 360) / 45)];
+        }
+
+        public static int CardinalToDegrees(string cardinal)
+        {
+            switch(cardinal)
+            {
+                case "N":
+                    break;
+                case "NE":
+                    break;
+                case "E":
+                    break;
+                case "SE":
+                    break;
+                case "S":
+                    break;
+                case "SW":
+                    break;
+                case "W":
+                    break;
+                case "NW":
+                    break;
+            }
+
+            return 1;
         }
 
         public override String ToString()
