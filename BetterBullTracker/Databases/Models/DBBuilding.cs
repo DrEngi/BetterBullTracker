@@ -1,4 +1,5 @@
 ﻿using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using MongoDB.Bson;
 using System;
 using System.Collections.Generic;

@@ -1,6 +1,7 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Mapbox;
 using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using Flurl.Http;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
@@ -20,6 +21,7 @@ namespace BetterBullTracker.AVLProcessing
             foreach (SyncromaticsRoute route in routes)
             {
                 Route newRoute = new Route(route);
+                route.Waypoints = SubdivideWaypoints(route.Waypoints);
                 newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
                 //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
                 newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
@@ -36,9 +38,34 @@ namespace BetterBullTracker.AVLProcessing
                     wayPointCount += paths.Path.Count;
                 }
 
+                GeneratePolygons(newRoute.StopPaths);
+
                 newRoutes.Add(route.ID, newRoute);
             }
             return newRoutes;
+        }
+
+        public async Task<Route> ProcessIndividualRoute(SyncromaticsRoute route)
+        {
+            Route newRoute = new Route(route);
+            route.Waypoints = SubdivideWaypoints(route.Waypoints);
+            newRoute.RouteWaypoints = await ParseWaypoints(route.Waypoints);
+            //newRoute.MapboxMatchedWaypoints = await MapboxMatch(route.Waypoints);
+            newRoute.RouteStops = ParseStops(route.Waypoints, route.Stops);
+            newRoute.StopPaths = ParseStopPaths(route.Waypoints, route.Stops);
+            newRoute.RouteDistance = CalculateTotalDistance(route.Waypoints);
+
+            double totalDistance = 0.0;
+            int stopCount = 0;
+            int wayPointCount = 0;
+            foreach (StopPath paths in newRoute.StopPaths)
+            {
+                totalDistance += paths.TotalPathDistance;
+                stopCount += 2;
+                wayPointCount += paths.Path.Count;
+            }
+
+            return newRoute;
         }
 
         private double CalculateTotalDistance(List<SyncromaticsWaypoint> waypoints)
@@ -127,13 +154,87 @@ namespace BetterBullTracker.AVLProcessing
             return paths;
         }
 
+        private List<SyncromaticsWaypoint> SubdivideWaypoints(List<SyncromaticsWaypoint> syncWaypoints)
+        {
+            List<SyncromaticsWaypoint> newWaypoints = new List<SyncromaticsWaypoint>();
+            for (int i = 0; i < syncWaypoints.Count; i+=2)
+            {
+                Coordinate firstLocation = new Coordinate(syncWaypoints[i].Latitude, syncWaypoints[i].Longitude);
+
+                Coordinate secondLocation;
+                if (i == syncWaypoints.Count - 1) secondLocation = new Coordinate(syncWaypoints[0].Latitude, syncWaypoints[0].Longitude);
+                else secondLocation = new Coordinate(syncWaypoints[i + 1].Latitude, syncWaypoints[i + 1].Longitude);
+
+                double distance = firstLocation.DistanceTo(secondLocation);
+                if (distance > 20)
+                {
+                    double longDifference = firstLocation.Longitude - secondLocation.Longitude;
+                    double latDifference = firstLocation.Latitude - secondLocation.Latitude;
+                    
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i].Latitude,
+                        Longitude = syncWaypoints[i].Longitude
+                    });
+
+                    //for every 20 meters between these two waypoints, add a new one.
+                    double maxInterval = (int)Math.Floor(distance / 20) + 1;
+                    List<SyncromaticsWaypoint> testlist = new List<SyncromaticsWaypoint>();
+                    for (double j = 1; j < maxInterval; j++)
+                    {
+                        double newLat = secondLocation.Latitude + (latDifference * (j / maxInterval));
+                        double newLong = secondLocation.Longitude + (longDifference * (j / maxInterval));
+
+                        testlist.Add(new SyncromaticsWaypoint()
+                        {
+                            Latitude = newLat,
+                            Longitude = newLong
+                        });
+
+                    }
+                    //reverse() required because otherwise stoppath calculation breaks due to reversed headings.
+                    testlist.Reverse();
+                    testlist.ForEach(x => newWaypoints.Add(x));
+
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Latitude,
+                        Longitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Longitude
+                    });
+                }
+                else
+                {
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i].Latitude,
+                        Longitude = syncWaypoints[i].Longitude
+                    });
+
+                    //TODO: adding the last element again can sometimes cause a weird path (e.g. on route c at MSC) because it goes the wrong direction.
+
+                    newWaypoints.Add(new SyncromaticsWaypoint()
+                    {
+                        Latitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Latitude,
+                        Longitude = syncWaypoints[i == syncWaypoints.Count - 1 ? 0 : i + 1].Longitude
+                    });
+                }
+            }
+
+            return newWaypoints;
+        }
+
         private async Task<List<RouteWaypoint>> ParseWaypoints(List<SyncromaticsWaypoint> syncWaypoints)
         {
             List<RouteWaypoint> waypoints = new List<RouteWaypoint>();
-            foreach (SyncromaticsWaypoint waypoint in syncWaypoints)
+            double distance = 0;
+            for (int i = 0; i < syncWaypoints.Count; i++)
             {
-                waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude));
+                SyncromaticsWaypoint waypoint = syncWaypoints[i];
+
+                if (i != 0) distance += new Coordinate(syncWaypoints[i - 1].Latitude, syncWaypoints[i - 1].Longitude).DistanceTo(new Coordinate(waypoint.Latitude, waypoint.Longitude));
+                waypoints.Add(new RouteWaypoint(waypoint.Latitude, waypoint.Longitude, distance));
             }
+            
             return waypoints;
         }
 
@@ -154,9 +255,14 @@ namespace BetterBullTracker.AVLProcessing
                 string mapboxAPI = url + coordsForMapbox + "?annotations=maxspeed&overview=full&geometries=geojson&access_token=pk.eyJ1IjoiZHJlbmdpIiwiYSI6ImNrMzY1NXl4aDAxanMzaHV0Zzlkd2pnZngifQ.L6C_jKfq5UCC5PkLRmFCbQ";
                 MatchingResponse response = await mapboxAPI.GetJsonAsync<MatchingResponse>();
 
-                foreach (List<double> coord in response.matchings[0].geometry.coordinates)
+                double distance = 0;
+                for (int i = 0; i < response.matchings[0].geometry.coordinates.Count; i++)
                 {
-                    waypoints.Add(new RouteWaypoint(coord[1], coord[0]));
+                    List<double> coord = response.matchings[0].geometry.coordinates[i];
+                    List<double> lastCoord = response.matchings[0].geometry.coordinates[i-1];
+
+                    if (i != 0) distance += new Coordinate(lastCoord[1], lastCoord[0]).DistanceTo(new Coordinate(coord[1], coord[0]));
+                    waypoints.Add(new RouteWaypoint(coord[1], coord[0], distance));
                 }
             }
 
@@ -179,26 +285,6 @@ namespace BetterBullTracker.AVLProcessing
 
                 //calculate stop paths
                 int firstWaypointIndex = waypoints.FindIndex(x => x.Latitude == stop.Latitude && x.Longitude == stop.Longitude);
-                if (i != syncromaticsStops.Count - 1)
-                {
-                    int lastWayPointIndex = waypoints.FindIndex(x => x.Latitude == syncromaticsStops[i + 1].Latitude && x.Longitude == syncromaticsStops[i + 1].Longitude);
-                    List<Coordinate> coordinates = new List<Coordinate>();
-
-                    for (int j = firstWaypointIndex; j < lastWayPointIndex + 1; j++)
-                    {
-                        coordinates.Add(new Coordinate(waypoints[j].Latitude, waypoints[j].Longitude));
-                    }
-
-                    StopPath path = new StopPath()
-                    {
-                        OriginStopID = stop.ID,
-                        DestinationStopID = syncromaticsStops[i + 1].ID,
-                        Path = coordinates
-                    };
-                }
-                
-
-                //this block of code is responsible for determining from which direction buses would approach this stop
                 if (firstWaypointIndex != -1)
                 {
                     SyncromaticsWaypoint waypoint = waypoints[firstWaypointIndex];
@@ -246,6 +332,43 @@ namespace BetterBullTracker.AVLProcessing
             }
 
             return tempStopsList;
+        }
+
+        public void GeneratePolygons(List<StopPath> paths)
+        {
+            foreach (StopPath path in paths)
+            {
+                path.Polygons = new List<Polygon>();
+                for (int i = 0; i < path.Path.Count - 1; i++)
+                {
+                    double bearing = path.Path[i].GetBearingTo(path.Path[i + 1]);
+
+                    Coordinate x1 = path.Path[i].AddDistanceAtBearing(5, bearing + 90);
+                    Coordinate y1 = path.Path[i].AddDistanceAtBearing(5, bearing - 90);
+                    Coordinate y2 = path.Path[i + 1].AddDistanceAtBearing(5, bearing - 90);
+                    Coordinate x2 = path.Path[i + 1].AddDistanceAtBearing(5, bearing + 90);
+
+                    path.Polygons.Add(new Polygon(x1, y1, y2, x2, Coordinate.DegreesToCardinal(bearing)));
+
+                    //handle extremely sharp corners
+                    if (i < path.Path.Count - 2)
+                    {
+                        double cornerBearing = Math.Abs(bearing - path.Path[i+1].GetBearingTo(path.Path[i + 2]));
+                        if ((cornerBearing >= 75 && cornerBearing <= 105) || (cornerBearing >= 255 && cornerBearing <= 285))
+                        {
+                            Coordinate mergedPoint = path.Path[i+1].AddDistanceAtBearing(5, bearing);
+
+                            Polygon cornerPolygon = new Polygon(
+                                path.Path[i+1].AddDistanceAtBearing(5, bearing + 90),
+                                path.Path[i+1].AddDistanceAtBearing(5, bearing - 90),
+                                mergedPoint.AddDistanceAtBearing(5, bearing - 90),
+                                mergedPoint.AddDistanceAtBearing(5, bearing + 90)
+                            );
+                            path.Polygons.Add(cornerPolygon);
+                        }
+                    }
+                }
+            }
         }
 
         public static IEnumerable<List<T>> SplitList<T>(List<T> locations, int nSize = 30)

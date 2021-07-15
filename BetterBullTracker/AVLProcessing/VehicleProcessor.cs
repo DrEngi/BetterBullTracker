@@ -15,6 +15,9 @@ using System.IO;
 using System.Threading;
 using SyncromaticsAPI.Events;
 using BetterBullTracker.AVLProcessing.VehicleHandling;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using BetterBullTracker.Spatial.Geometry;
 
 namespace BetterBullTracker.AVLProcessing
 {
@@ -23,18 +26,27 @@ namespace BetterBullTracker.AVLProcessing
         AVLProcessingService AVLProcessing;
         DatabaseService Database;
 
-        private Dictionary<int, VehicleState> VehicleStates;
-        private Dictionary<int, TripHistory> InProgressHistories;
-        private Dictionary<int, Route> Routes;
+        private ConcurrentDictionary<int, VehicleState> VehicleStates;
+        private ConcurrentDictionary<int, TripHistory> InProgressHistories;
+        private ConcurrentDictionary<int, Route> Routes;
+
+        ConcurrentDictionary<int, BlockingCollection<SyncromaticsVehicle>> VehicleProcessingQueues;
+        List<Task> VehicleWorkers;
 
         public VehicleProcessor(AVLProcessingService service, Dictionary<int, Route> routes)
         {
             AVLProcessing = service;
             Database = service.GetDatabase();
-            Routes = routes;
 
-            VehicleStates = new Dictionary<int, VehicleState>();
-            InProgressHistories = new Dictionary<int, TripHistory>();
+            RouteProcessor processor = new RouteProcessor();
+            List<SyncromaticsRoute> syncRoutes = Database.GetHistoricalCollections().GetRoutes().Result;
+            Routes = new ConcurrentDictionary<int, Route>(processor.ProcessRoutes(syncRoutes).Result);
+
+            VehicleStates = new ConcurrentDictionary<int, VehicleState>();
+            InProgressHistories = new ConcurrentDictionary<int, TripHistory>();
+
+            VehicleProcessingQueues = new ConcurrentDictionary<int, BlockingCollection<SyncromaticsVehicle>>();
+            VehicleWorkers = new List<Task>();
         }
 
         public void Start()
@@ -44,37 +56,59 @@ namespace BetterBullTracker.AVLProcessing
             AVLProcessing.Syncromatics.Start();
             */
 
-            System.Timers.Timer Timer = new System.Timers.Timer(3000);
+            System.Timers.Timer Timer = new System.Timers.Timer(500);
             Timer.AutoReset = true;
             Timer.Elapsed += new ElapsedEventHandler(TestTriggerAsync);
             Timer.Start();
         }
 
-        int i = 1;
+        //history downloader started at this index for some reason
+        //int i = 157;
+        int i = 350;
+        int failedMatches = 0;
+
         private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
         {
-            foreach(VehiclePosition position in await Database.GetPositionCollection().GetPositionAsync(i))
+            if (i == 1000)
             {
-                await Syncromatics_NewVehicleDownloadedAsync(this, position.Args);
+                Console.WriteLine(failedMatches);
+            }
+            
+            if (Database.GetHistoricalCollections().HasIndex(i))
+            {
+                foreach (VehiclePosition position in await Database.GetHistoricalCollections().GetPositionAsync(i))
+                {
+                    if (!VehicleProcessingQueues.ContainsKey(position.Vehicle.ID))
+                    {
+                        bool result = VehicleProcessingQueues.TryAdd(position.Vehicle.ID, new BlockingCollection<SyncromaticsVehicle>());
+
+                        if (result)
+                        {
+                            Task task = new Task(() => HandleVehicle(position.Vehicle.ID));
+                            VehicleWorkers.Add(task);
+                            task.Start();
+                        }
+                    }
+
+                    VehicleProcessingQueues[position.Vehicle.ID].Add(position.Vehicle);
+
+                    //await Syncromatics_NewVehicleDownloadedAsync(this, position.Args);
+                }
             }
             i++;
         }
 
-        private async Task Syncromatics_NewVehicleDownloadedAsync(object sender, SyncromaticsAPI.Events.VehicleDownloadedArgs e)
+        private void HandleVehicle(int vehicleID)
         {
-            //Console.WriteLine("Processing vehicle " + e.Vehicle.Name);
+            Console.WriteLine($"Worker for vehicle {vehicleID} opened.");
 
-            /*
-            await Database.GetPositionCollection().InsertPositionAsync(new VehiclePosition()
+            foreach(var workitem in VehicleProcessingQueues[vehicleID].GetConsumingEnumerable())
             {
-                Args = e,
-                Index = AVLProcessing.Syncromatics.getIndex()
-            });
-            */
+                if (VehicleStates.ContainsKey(workitem.ID)) HandleExistingVehicle(workitem);
+                else HandleNewVehicle(workitem);
+            }
 
-            
-            if (VehicleStates.ContainsKey(e.Vehicle.ID)) await HandleExistingVehicle(e.Vehicle);
-            else HandleNewVehicle(e.Vehicle);
+            Console.WriteLine("worker for vehicle " + vehicleID + " closed");
         }
 
         /// <summary>
@@ -94,11 +128,12 @@ namespace BetterBullTracker.AVLProcessing
             history.TimeLeftOrigin = DateTime.UnixEpoch;
             InProgressHistories.Add(vehicle.ID, history);
             */
-
-            VehicleStates.Add(vehicle.ID, state);
+            
+            bool reslt = VehicleStates.TryAdd(vehicle.ID, state);
+            if (!reslt) Console.WriteLine("Not added!!!!!!");
 
             //we have not seen this vehicle before. let's check where it is
-            StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
+            //StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
 
         }
 
@@ -109,29 +144,40 @@ namespace BetterBullTracker.AVLProcessing
         /// <returns></returns>
         private async Task HandleExistingVehicle(SyncromaticsVehicle vehicle)
         {
-            //Console.WriteLine("existing vehicle " + vehicle.Name);
             VehicleState state = VehicleStates[vehicle.ID];
-            if (state.GetLatestVehicleReport().Updated.Equals(vehicle.Updated))
-            {
-                //Console.WriteLine("not updated!");
-                return; //we aren't interested in reports that haven't been updated
-            }
+            if (state.GetLatestVehicleReport().Updated.Equals(vehicle.Updated)) return; //we aren't interested in reports that haven't been updated
 
             if (state.GetLatestVehicleReport().RouteID != vehicle.RouteID)
             {
                 //if a vehicle changes routes, remove its state and restart
                 Console.WriteLine("route not the same");
-                VehicleStates.Remove(vehicle.ID);
+                VehicleState removedState;
+                VehicleStates.Remove(vehicle.ID, out removedState);
                 return;
             }
             state.AddVehicleReport(vehicle);
 
             Route route = Routes[vehicle.RouteID];
-            StopPath stopPath = SpatialMatcher.GetStopPath(route, state);
-            double headway = HeadwayHandler.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID, stopPath, AVLProcessing.GetWebsockets());
 
+            state.CurrentStopPath = SpatialMatcher.PolygonMatch(state, route);
             
-            await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, stopPath));
+            if (state.CurrentStopPath == null)
+            {
+                Console.WriteLine("Cannot match to stop path!");
+                state.OnRoute = false;
+                failedMatches++;
+            }
+            /*
+            else if (state.CurrentStopPath != null)
+            {
+                state.OnRoute = true;
+
+                double headway = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
+                bool isOnBreak = BreakGenerator.IsOnBreak(state, route);
+            }
+            */
+
+            await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, state.CurrentStopPath, route));
         }
     }
 }

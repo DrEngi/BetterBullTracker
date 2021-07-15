@@ -1,5 +1,6 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +22,8 @@ namespace BetterBullTracker.WebSockets
         public int DepartingStopID { get; set; }
         public int ArrivingStopID { get; set; }
 
+        public Route Route { get; set; }
+
         public WSVehicleUpdateMsg(VehicleState state)
         {
             VehicleNumber = state.BusNumber;
@@ -31,7 +34,7 @@ namespace BetterBullTracker.WebSockets
             StopIndex = state.StopIndex;
         }
 
-        public WSVehicleUpdateMsg(VehicleState state, StopPath path) : this(state)
+        public WSVehicleUpdateMsg(VehicleState state, StopPath path, Route route) : this(state)
         {
             if (path == null)
             {
@@ -43,6 +46,8 @@ namespace BetterBullTracker.WebSockets
                 this.DepartingStopID = path.OriginStopID;
                 this.ArrivingStopID = path.DestinationStopID;
             }
+
+            Route = route;
             
         }
     }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BetterBullTracker.Spatial.Geometry;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,7 +12,8 @@ namespace BetterBullTracker.Spatial
         public int DestinationStopID;
 
         public List<Coordinate> Path;
-        public double TotalPathDistance;
+        public List<Polygon> Polygons;
 
+        public double TotalPathDistance;
     }
 }

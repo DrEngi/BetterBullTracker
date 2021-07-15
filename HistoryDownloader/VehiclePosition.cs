@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BetterBullTracker.Databases.Models
+namespace HistoryDownloader
 {
     public class VehiclePosition
     {

@@ -34,7 +34,7 @@ namespace BetterBullTracker.AVLProcessing
             Routes = RouteProcessor.ProcessRoutes(Syncromatics.GetRoutesAsync().Result).Result;
 
             VehicleProcessor = new VehicleProcessor(this, Routes);
-            VehicleProcessor.Start();
+            //VehicleProcessor.Start();
         }
 
         public WebsocketService GetWebsockets()
