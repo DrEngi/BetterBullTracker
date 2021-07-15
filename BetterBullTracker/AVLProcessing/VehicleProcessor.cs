@@ -17,6 +17,7 @@ using SyncromaticsAPI.Events;
 using BetterBullTracker.AVLProcessing.VehicleHandling;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using BetterBullTracker.Spatial.Geometry;
 
 namespace BetterBullTracker.AVLProcessing
 {
@@ -62,7 +63,8 @@ namespace BetterBullTracker.AVLProcessing
         }
 
         //history downloader started at this index for some reason
-        int i = 157;
+        //int i = 157;
+        int i = 350;
         int failedMatches = 0;
 
         private async void TestTriggerAsync(object sender, ElapsedEventArgs e)
@@ -157,34 +159,7 @@ namespace BetterBullTracker.AVLProcessing
 
             Route route = Routes[vehicle.RouteID];
 
-            foreach(StopPath path in route.StopPaths)
-            {
-                for (int i = 0; i < path.Path.Count - 2; i+=2)
-                {
-                    double bearing = path.Path[i].GetBearingTo(path.Path[i+1]);
-
-                    Console.Write("{\"type\": \"Feature\",\"properties\": { },\"geometry\": {\"type\": \"Polygon\",\"coordinates\":[[ ");
-                    
-                    Coordinate newCoord = path.Path[i].AddDistanceAtBearing(2.5, bearing + 90);
-                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
-
-                    newCoord = path.Path[i].AddDistanceAtBearing(3, bearing - 90);
-                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
-
-                    newCoord = path.Path[i + 1].AddDistanceAtBearing(3, bearing - 90);
-                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
-
-                    newCoord = path.Path[i + 1].AddDistanceAtBearing(2.5, bearing + 90);
-                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}],");
-
-
-
-                    newCoord = path.Path[i].AddDistanceAtBearing(2.5, bearing + 90);
-                    Console.WriteLine($"[{newCoord.Longitude}, {newCoord.Latitude}]]]}}}},");
-                }
-            }
-
-            state.CurrentStopPath = SpatialMatcher.GetStopPath(route, state);
+            state.CurrentStopPath = SpatialMatcher.PolygonMatch(state, route);
             
             if (state.CurrentStopPath == null)
             {
@@ -192,6 +167,7 @@ namespace BetterBullTracker.AVLProcessing
                 state.OnRoute = false;
                 failedMatches++;
             }
+            /*
             else if (state.CurrentStopPath != null)
             {
                 state.OnRoute = true;
@@ -199,6 +175,7 @@ namespace BetterBullTracker.AVLProcessing
                 double headway = HeadwayGenerator.CalculateHeadwayDifference(VehicleStates.Values.ToList(), route, vehicle.ID);
                 bool isOnBreak = BreakGenerator.IsOnBreak(state, route);
             }
+            */
 
             await AVLProcessing.GetWebsockets().SendVehicleUpdateAsync(new WebSockets.WSVehicleUpdateMsg(state, state.CurrentStopPath, route));
         }

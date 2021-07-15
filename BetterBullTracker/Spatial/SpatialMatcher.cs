@@ -1,4 +1,5 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
+using BetterBullTracker.Spatial.Geometry;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
 using System.Collections.Generic;
@@ -174,6 +175,24 @@ namespace BetterBullTracker.Spatial
 
             if (valid) return selectedPath;
             else return null;
+        }
+
+        public static StopPath PolygonMatch(VehicleState state, Route route)
+        {
+            Coordinate vehicleLocation = new Coordinate(state.GetLatestVehicleReport().Latitude, state.GetLatestVehicleReport().Longitude);
+
+            foreach(StopPath stopPath in route.StopPaths)
+            {
+                for (int i = 0; i < stopPath.Polygons.Count; i++)
+                {
+                    if (stopPath.Polygons[i].Direction.Equals(state.GetLatestVehicleReport().Heading) || stopPath.Polygons[i].Direction == "any")
+                    {
+                        if (stopPath.Polygons[i].Contains(vehicleLocation)) return stopPath;
+                    }
+                }
+            }
+
+            return null;
         }
     }
 

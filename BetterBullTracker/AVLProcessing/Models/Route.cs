@@ -1,4 +1,5 @@
 ﻿using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using Newtonsoft.Json;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;

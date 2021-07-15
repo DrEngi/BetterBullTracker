@@ -1,6 +1,7 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Mapbox;
 using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using Flurl.Http;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
@@ -36,6 +37,8 @@ namespace BetterBullTracker.AVLProcessing
                     stopCount += 2;
                     wayPointCount += paths.Path.Count;
                 }
+
+                GeneratePolygons(newRoute.StopPaths);
 
                 newRoutes.Add(route.ID, newRoute);
             }
@@ -329,6 +332,43 @@ namespace BetterBullTracker.AVLProcessing
             }
 
             return tempStopsList;
+        }
+
+        public void GeneratePolygons(List<StopPath> paths)
+        {
+            foreach (StopPath path in paths)
+            {
+                path.Polygons = new List<Polygon>();
+                for (int i = 0; i < path.Path.Count - 1; i++)
+                {
+                    double bearing = path.Path[i].GetBearingTo(path.Path[i + 1]);
+
+                    Coordinate x1 = path.Path[i].AddDistanceAtBearing(5, bearing + 90);
+                    Coordinate y1 = path.Path[i].AddDistanceAtBearing(5, bearing - 90);
+                    Coordinate y2 = path.Path[i + 1].AddDistanceAtBearing(5, bearing - 90);
+                    Coordinate x2 = path.Path[i + 1].AddDistanceAtBearing(5, bearing + 90);
+
+                    path.Polygons.Add(new Polygon(x1, y1, y2, x2, Coordinate.DegreesToCardinal(bearing)));
+
+                    //handle extremely sharp corners
+                    if (i < path.Path.Count - 2)
+                    {
+                        double cornerBearing = Math.Abs(bearing - path.Path[i+1].GetBearingTo(path.Path[i + 2]));
+                        if ((cornerBearing >= 75 && cornerBearing <= 105) || (cornerBearing >= 255 && cornerBearing <= 285))
+                        {
+                            Coordinate mergedPoint = path.Path[i+1].AddDistanceAtBearing(5, bearing);
+
+                            Polygon cornerPolygon = new Polygon(
+                                path.Path[i+1].AddDistanceAtBearing(5, bearing + 90),
+                                path.Path[i+1].AddDistanceAtBearing(5, bearing - 90),
+                                mergedPoint.AddDistanceAtBearing(5, bearing - 90),
+                                mergedPoint.AddDistanceAtBearing(5, bearing + 90)
+                            );
+                            path.Polygons.Add(cornerPolygon);
+                        }
+                    }
+                }
+            }
         }
 
         public static IEnumerable<List<T>> SplitList<T>(List<T> locations, int nSize = 30)

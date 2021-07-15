@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BetterBullTracker.AVLProcessing;
 using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 

@@ -1,5 +1,6 @@
 ﻿using BetterBullTracker.AVLProcessing.Models;
 using BetterBullTracker.Spatial;
+using BetterBullTracker.Spatial.Geometry;
 using BetterBullTracker.WebSockets;
 using SyncromaticsAPI.SyncromaticsModels;
 using System;
