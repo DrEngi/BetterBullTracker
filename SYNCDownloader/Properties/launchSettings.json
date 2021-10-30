@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SYNCDownloader": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

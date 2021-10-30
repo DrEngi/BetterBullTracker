@@ -1,13 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30128.74
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31825.309
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BetterBullTracker", "BetterBullTracker\BetterBullTracker.csproj", "{04D0724A-6D36-44AB-A32C-2907344046A4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SyncromaticsAPI", "SyncromaticsAPI\SyncromaticsAPI.csproj", "{249E5C52-0D25-4942-A43B-DB4DEE9C7F9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HistoryDownloader", "HistoryDownloader\HistoryDownloader.csproj", "{5DBD52D5-9535-4359-ABDA-DC61DCB06474}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SYNCDownloader", "SYNCDownloader\SYNCDownloader.csproj", "{58261EA2-BC62-4068-873B-DD410B5A6232}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassioAPI", "PassioAPI\PassioAPI.csproj", "{0885D2D7-2FF8-44DA-8B1B-E1D5EF7418E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassioDownloader", "PassioDownloader\PassioDownloader.csproj", "{B5511749-0752-49E2-AB30-30E66795E103}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +27,18 @@ Global
 		{249E5C52-0D25-4942-A43B-DB4DEE9C7F9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{249E5C52-0D25-4942-A43B-DB4DEE9C7F9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{249E5C52-0D25-4942-A43B-DB4DEE9C7F9F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5DBD52D5-9535-4359-ABDA-DC61DCB06474}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5DBD52D5-9535-4359-ABDA-DC61DCB06474}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5DBD52D5-9535-4359-ABDA-DC61DCB06474}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5DBD52D5-9535-4359-ABDA-DC61DCB06474}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58261EA2-BC62-4068-873B-DD410B5A6232}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58261EA2-BC62-4068-873B-DD410B5A6232}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58261EA2-BC62-4068-873B-DD410B5A6232}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58261EA2-BC62-4068-873B-DD410B5A6232}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0885D2D7-2FF8-44DA-8B1B-E1D5EF7418E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0885D2D7-2FF8-44DA-8B1B-E1D5EF7418E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0885D2D7-2FF8-44DA-8B1B-E1D5EF7418E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0885D2D7-2FF8-44DA-8B1B-E1D5EF7418E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5511749-0752-49E2-AB30-30E66795E103}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5511749-0752-49E2-AB30-30E66795E103}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5511749-0752-49E2-AB30-30E66795E103}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5511749-0752-49E2-AB30-30E66795E103}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

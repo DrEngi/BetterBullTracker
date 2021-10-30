@@ -36,6 +36,7 @@ namespace SyncromaticsAPI
             await RouteManager.DownloadAllRegions();
             List<SyncromaticsRoute> routes =  await RouteManager.DownloadAllRoutes();
             VehicleManager.SetRoutes(routes);
+            Console.WriteLine("Routes downloaded");
             return routes;
         }
 
