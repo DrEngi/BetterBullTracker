@@ -10,6 +10,6 @@ namespace BetterBullTracker.Databases.Models
     {
         public BsonObjectId _id { get; set; }
         public int Index { get; set; }
-        public SyncromaticsAPI.Events.VehicleDownloadedArgs Args { get; set; }
+        public SyncromaticsAPI.SyncromaticsModels.SyncromaticsVehicle Vehicle { get; set; }
     }
 }
