@@ -39,6 +39,10 @@ namespace SyncromaticsAPI
                 Timer.Elapsed += new ElapsedEventHandler(DownloadVehicles);
                 Timer.Start();
             }
+            else
+            {
+                Console.WriteLine("Routes Null");
+            }
         }
 
         int i = 1;

@@ -8,14 +8,14 @@ using BetterBullTracker.Spatial;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace BetterBullTracker.Controllers
+namespace BetterBullTracker.APIControllers
 {
     [ApiController]
     [Route("weather")]
     public class WeatherForecastController : ControllerBase
     {
         private AVLProcessingService Service;
-        
+
         public WeatherForecastController(AVLProcessingService service)
         {
             Service = service;
@@ -31,11 +31,11 @@ namespace BetterBullTracker.Controllers
         public ActionResult<Dictionary<int, Stop>> GetClosestStops([FromBody] Coordinate coord)
         {
             Dictionary<int, Stop> stops = new Dictionary<int, Stop>();
-            foreach(Route route in Service.GetRoutes().Values)
+            foreach (Route route in Service.GetRoutes().Values)
             {
                 Stop closest = null;
                 double distance = double.MaxValue;
-                foreach(Stop stop in route.RouteStops)
+                foreach (Stop stop in route.RouteStops)
                 {
                     double thisDistance = coord.DistanceTo(stop.Coordinate);
                     if (thisDistance < distance)
