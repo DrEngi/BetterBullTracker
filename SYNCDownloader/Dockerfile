@@ -18,5 +18,5 @@ RUN dotnet publish "SYNCDownloader.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ADD config.json /app/publish/
+COPY --from=build /app/build/Config.json /app/config.json
 ENTRYPOINT ["dotnet", "SYNCDownloader.dll"]
